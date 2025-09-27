@@ -44,7 +44,7 @@ const StorePage = ({ user }) => {
         <ul>
           {stores.map((s, idx) => (
             <li key={idx}>
-              {s.stores?.name} ({s.role})
+              {s.store?.name} ({s.role})
             </li>
           ))}
         </ul>
@@ -65,4 +65,4 @@ const StorePage = ({ user }) => {
   )
 }
 
-export default StorePage   // ✅ 이 줄이 꼭 있어야 합니다
+export default StorePage
