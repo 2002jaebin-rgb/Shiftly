@@ -8,158 +8,93 @@ const SwapRequestsPage = ({ user }) => {
 
   useEffect(() => {
     loadSwapRequests()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const loadSwapRequests = async () => {
     try {
       setLoading(true)
+      setError('')
       const { data, error } = await db.swapRequests.getByUserId(user.id)
-      
-      if (error) {
-        setError('교체 요청을 불러오는 중 오류가 발생했습니다.')
-        console.error('Error loading swap requests:', error)
-      } else {
-        setSwapRequests(data || [])
-      }
+      if (error) throw error
+      setSwapRequests(data || [])
     } catch (err) {
+      console.error(err)
       setError('교체 요청을 불러오는 중 오류가 발생했습니다.')
-      console.error('Error loading swap requests:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleStatusUpdate = async (requestId, newStatus) => {
+  // 매니저 승인/거절 액션
+  const updateStatus = async (request, newStatus) => {
     try {
-      const { error } = await db.swapRequests.updateStatus(requestId, newStatus)
-      
-      if (error) {
-        alert('상태 업데이트 중 오류가 발생했습니다.')
-        console.error('Error updating status:', error)
-      } else {
-        // 목록 새로고침
-        loadSwapRequests()
+      // 1) 요청 상태 변경
+      const { error } = await db.swapRequests.updateStatus(request.id, newStatus)
+      if (error) throw error
+
+      // 2) 승인일 때만, 시프트 소유자 교체
+      if (newStatus === 'accepted') {
+        const { error: sErr } = await db.shifts.update(request.shift_id, { user_id: request.target_id })
+        if (sErr) throw sErr
       }
+
+      await loadSwapRequests()
+      alert(`요청이 ${newStatus === 'accepted' ? '승인' : '거절'}되었습니다.`)
     } catch (err) {
-      alert('상태 업데이트 중 오류가 발생했습니다.')
-      console.error('Error updating status:', err)
+      console.error(err)
+      alert('상태 변경 중 오류가 발생했습니다.')
     }
   }
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'short'
-    })
-  }
-
-  const formatTime = (timeString) => {
-    return timeString || '시간 미정'
-  }
-
-  const getStatusClass = (status) => {
-    switch (status) {
-      case 'pending':
-        return 'status-pending'
-      case 'approved':
-        return 'status-approved'
-      case 'rejected':
-        return 'status-rejected'
-      default:
-        return ''
+  const formatRange = (row) => {
+    const hasISO = (v) => typeof v === 'string' && v.includes('T')
+    if (row?.start_time && hasISO(row.start_time)) {
+      const s = new Date(row.start_time)
+      const e = new Date(row.end_time)
+      const dateStr = s.toLocaleDateString()
+      const sTime = s.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      const eTime = e.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      return `${dateStr} ${sTime} ~ ${eTime}`
     }
+    return `${row?.date || ''} ${row?.start_time || ''} ~ ${row?.end_time || ''}`
   }
 
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'pending':
-        return '대기 중'
-      case 'approved':
-        return '승인됨'
-      case 'rejected':
-        return '거부됨'
-      default:
-        return status
-    }
-  }
+  if (loading) return <div>불러오는 중…</div>
+  if (error) return <div style={{ color: 'red' }}>{error}</div>
 
-  if (loading) {
-    return (
-      <div className="container">
-        <h1>교체 요청</h1>
-        <div style={{ textAlign: 'center', marginTop: '50px' }}>
-          로딩 중...
-        </div>
-      </div>
-    )
+  if (!swapRequests.length) {
+    return <div>교체 요청이 없습니다.</div>
   }
 
   return (
-    <div className="container">
-      <h1>교체 요청</h1>
-      
-      {error && (
-        <div style={{ color: 'red', marginBottom: '20px' }}>
-          {error}
-        </div>
-      )}
+    <div>
+      <h2>교체 요청</h2>
+      <div style={{ display: 'grid', gap: 12 }}>
+        {swapRequests.map((req) => (
+          <div key={req.id} style={{ border: '1px solid #ddd', borderRadius: 6, padding: 12 }}>
+            <div><strong>요청 ID:</strong> {req.id}</div>
+            <div><strong>상태:</strong> {req.status}</div>
 
-      {swapRequests.length === 0 ? (
-        <div className="card">
-          <p>교체 요청이 없습니다.</p>
-        </div>
-      ) : (
-        <div className="shift-grid">
-          {swapRequests.map((request) => (
-            <div key={request.id} className="shift-card">
-              <h3>교체 요청 #{request.id}</h3>
-              <p><strong>상태:</strong> <span className={getStatusClass(request.status)}>{getStatusText(request.status)}</span></p>
-              
-              {request.shift && (
-                <div>
-                  <h4>근무 정보</h4>
-                  <p><strong>제목:</strong> {request.shift.title || '근무'}</p>
-                  <p><strong>날짜:</strong> {formatDate(request.shift.date)}</p>
-                  <p><strong>시간:</strong> {formatTime(request.shift.start_time)} - {formatTime(request.shift.end_time)}</p>
-                  <p><strong>위치:</strong> {request.shift.location || '미정'}</p>
-                </div>
-              )}
-              
-              <div>
-                <h4>요청 정보</h4>
-                <p><strong>요청자:</strong> {request.requester?.name || request.requester?.email || '알 수 없음'}</p>
-                <p><strong>대상자:</strong> {request.target?.name || request.target?.email || '알 수 없음'}</p>
-                <p><strong>요청일:</strong> {formatDate(request.created_at)}</p>
-                {request.message && (
-                  <p><strong>메시지:</strong> {request.message}</p>
-                )}
-              </div>
-
-              {/* 관리자 권한이 있다면 승인/거부 버튼 표시 */}
-              {request.target_id === user.id && request.status === 'pending' && (
-                <div style={{ marginTop: '15px' }}>
-                  <button 
-                    onClick={() => handleStatusUpdate(request.id, 'approved')}
-                    className="btn btn-success"
-                    style={{ marginRight: '10px' }}
-                  >
-                    승인
-                  </button>
-                  <button 
-                    onClick={() => handleStatusUpdate(request.id, 'rejected')}
-                    className="btn btn-danger"
-                  >
-                    거부
-                  </button>
-                </div>
-              )}
+            {/* 관계형 select로 가져오는 경우를 대비해 유연하게 표시 */}
+            <div style={{ marginTop: 8 }}>
+              <div><strong>시프트:</strong> {formatRange(req.shift || req)}</div>
+              <div><strong>요청자:</strong> {req.requester?.name || req.requester?.email || req.requester_id}</div>
+              <div><strong>대상자:</strong> {req.target?.name || req.target?.email || req.target_id}</div>
             </div>
-          ))}
-        </div>
-      )}
+
+            {/* 간단 권한 가정: 매니저만 승인/거절 버튼을 본다고 가정하려면, user.role 확인 필요(프로필 테이블 기준) */}
+            <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+              <button className="btn btn-primary" onClick={() => updateStatus(req, 'accepted')}>
+                승인
+              </button>
+              <button className="btn btn-secondary" onClick={() => updateStatus(req, 'rejected')}>
+                거절
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

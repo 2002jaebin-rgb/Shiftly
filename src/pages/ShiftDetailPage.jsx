@@ -14,178 +14,121 @@ const ShiftDetailPage = ({ user }) => {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    loadShift()
-    loadUsers()
+    loadShiftAndUsers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
-  const loadShift = async () => {
+  const loadShiftAndUsers = async () => {
     try {
       setLoading(true)
-      const { data, error } = await db.shifts.getAll()
-      
-      if (error) {
-        setError('시프트를 불러오는 중 오류가 발생했습니다.')
-        console.error('Error loading shift:', error)
-      } else {
-        const foundShift = data?.find(s => s.id === parseInt(id))
-        if (foundShift) {
-          setShift(foundShift)
-        } else {
-          setError('시프트를 찾을 수 없습니다.')
-        }
-      }
+      setError('')
+
+      // 헬퍼에 getById가 없을 수 있으니 전체 후 필터
+      const { data: allShifts, error: sErr } = await db.shifts.getAll()
+      if (sErr) throw sErr
+      const found = (allShifts || []).find((s) => String(s.id) === String(id))
+      setShift(found || null)
+
+      const { data: allUsers, error: uErr } = await db.users.getAll()
+      if (uErr) throw uErr
+      // 본인 제외
+      setUsers((allUsers || []).filter((u) => u.id !== user.id))
     } catch (err) {
-      setError('시프트를 불러오는 중 오류가 발생했습니다.')
-      console.error('Error loading shift:', err)
+      console.error(err)
+      setError('시프트 정보를 불러오는 중 오류가 발생했습니다.')
     } finally {
       setLoading(false)
     }
   }
 
-  const loadUsers = async () => {
-    try {
-      const { data, error } = await db.users.getAll()
-      if (!error && data) {
-        // 현재 사용자 제외
-        setUsers(data.filter(u => u.id !== user.id))
-      }
-    } catch (err) {
-      console.error('Error loading users:', err)
+  const formatRange = (row) => {
+    const hasISO = (v) => typeof v === 'string' && v.includes('T')
+    if (row?.start_time && hasISO(row.start_time)) {
+      const s = new Date(row.start_time)
+      const e = new Date(row.end_time)
+      const dateStr = s.toLocaleDateString()
+      const sTime = s.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      const eTime = e.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      return `${dateStr} ${sTime} ~ ${eTime}`
     }
+    return `${row?.date || ''} ${row?.start_time || ''} ~ ${row?.end_time || ''}`
   }
 
-  const handleSwapRequest = async (e) => {
-    e.preventDefault()
-    if (!targetUserId) return
-
-    setSubmitting(true)
+  const handleCreateSwapRequest = async () => {
+    if (!targetUserId) {
+      alert('교체 대상자를 선택해주세요.')
+      return
+    }
     try {
+      setSubmitting(true)
       const swapData = {
-        shift_id: parseInt(id),
+        shift_id: shift.id,
         requester_id: user.id,
         target_id: targetUserId,
         status: 'pending',
-        message: `교체 요청: ${shift?.title || '근무'}`
       }
-
       const { data, error } = await db.swapRequests.create(swapData)
-      
-      if (error) {
-        alert('교체 요청 생성 중 오류가 발생했습니다.')
-        console.error('Error creating swap request:', error)
-      } else {
-        alert('교체 요청이 성공적으로 전송되었습니다.')
-        navigate('/swap-requests')
-      }
+      if (error) throw error
+      alert('교체 요청이 등록되었습니다.')
+      setShowSwapForm(false)
+      navigate('/swap-requests')
     } catch (err) {
-      alert('교체 요청 생성 중 오류가 발생했습니다.')
-      console.error('Error creating swap request:', err)
+      console.error(err)
+      alert('교체 요청 중 오류가 발생했습니다.')
     } finally {
       setSubmitting(false)
     }
   }
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'short'
-    })
-  }
+  if (loading) return <div>불러오는 중…</div>
+  if (error) return <div style={{ color: 'red' }}>{error}</div>
+  if (!shift) return <div>해당 시프트를 찾을 수 없습니다.</div>
 
-  const formatTime = (timeString) => {
-    return timeString || '시간 미정'
-  }
-
-  if (loading) {
-    return (
-      <div className="container">
-        <div style={{ textAlign: 'center', marginTop: '50px' }}>
-          로딩 중...
-        </div>
-      </div>
-    )
-  }
-
-  if (error || !shift) {
-    return (
-      <div className="container">
-        <h1>시프트 상세</h1>
-        <div style={{ color: 'red' }}>
-          {error || '시프트를 찾을 수 없습니다.'}
-        </div>
-        <button 
-          onClick={() => navigate('/dashboard')} 
-          className="btn btn-secondary"
-          style={{ marginTop: '20px' }}
-        >
-          대시보드로 돌아가기
-        </button>
-      </div>
-    )
-  }
+  const isOwner = shift.user_id === user.id
 
   return (
-    <div className="container">
-      <h1>시프트 상세</h1>
-      
-      <div className="card">
-        <h2>{shift.title || '근무'}</h2>
-        <p><strong>날짜:</strong> {formatDate(shift.date)}</p>
-        <p><strong>시작 시간:</strong> {formatTime(shift.start_time)}</p>
-        <p><strong>종료 시간:</strong> {formatTime(shift.end_time)}</p>
-        <p><strong>위치:</strong> {shift.location || '미정'}</p>
-        {shift.notes && (
-          <p><strong>메모:</strong> {shift.notes}</p>
-        )}
-        
-        <div style={{ marginTop: '20px' }}>
-          <button 
-            onClick={() => setShowSwapForm(!showSwapForm)}
-            className="btn btn-primary"
-          >
-            {showSwapForm ? '교체 요청 취소' : '교체 요청하기'}
-          </button>
-        </div>
+    <div>
+      <h2>시프트 상세</h2>
+      <div style={{ border: '1px solid #ddd', borderRadius: 6, padding: 12, marginBottom: 16 }}>
+        <div><strong>근무</strong></div>
+        <div>{formatRange(shift)}</div>
+        <div>상태: {shift.status}</div>
+        <div>배정 사용자: {shift.user_id}</div>
+      </div>
 
-        {showSwapForm && (
-          <div style={{ marginTop: '20px', padding: '20px', border: '1px solid #ddd', borderRadius: '8px' }}>
-            <h3>교체 요청</h3>
-            <form onSubmit={handleSwapRequest}>
-              <div className="form-group">
-                <label className="form-label">교체할 직원 선택</label>
-                <select
-                  className="form-input"
-                  value={targetUserId}
-                  onChange={(e) => setTargetUserId(e.target.value)}
-                  required
-                >
-                  <option value="">직원을 선택하세요</option>
-                  {users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name || user.email}
-                    </option>
+      {isOwner ? (
+        <div style={{ marginBottom: 16 }}>
+          {!showSwapForm ? (
+            <button className="btn btn-primary" onClick={() => setShowSwapForm(true)}>
+              교체 요청하기
+            </button>
+          ) : (
+            <div style={{ border: '1px solid #eee', padding: 12, borderRadius: 6 }}>
+              <div style={{ marginBottom: 8 }}>
+                <label>교체 대상자 선택:&nbsp;</label>
+                <select value={targetUserId} onChange={(e) => setTargetUserId(e.target.value)}>
+                  <option value="">-- 선택 --</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>{u.name || u.email}</option>
                   ))}
                 </select>
               </div>
-              <button 
-                type="submit" 
-                className="btn btn-success"
-                disabled={submitting}
-              >
-                {submitting ? '요청 중...' : '교체 요청 전송'}
+              <button className="btn btn-primary" onClick={handleCreateSwapRequest} disabled={submitting}>
+                {submitting ? '요청 중…' : '요청 등록'}
               </button>
-            </form>
-          </div>
-        )}
-      </div>
+              <button className="btn btn-secondary" style={{ marginLeft: 8 }} onClick={() => setShowSwapForm(false)}>
+                취소
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div style={{ marginBottom: 16, color: '#666' }}>
+          이 시프트의 소유자가 아니므로 교체 요청을 생성할 수 없습니다.
+        </div>
+      )}
 
-      <button 
-        onClick={() => navigate('/dashboard')} 
-        className="btn btn-secondary"
-      >
+      <button onClick={() => navigate('/dashboard')} className="btn btn-secondary">
         대시보드로 돌아가기
       </button>
     </div>
