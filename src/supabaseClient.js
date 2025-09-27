@@ -131,5 +131,34 @@ export const db = {
         .single()
       return { data, error }
     }
+  },
+
+  shiftNeeds: {
+    // 매장별 필요 인원 조회
+    listForStore: async (storeId) => {
+      const { data, error } = await supabase
+        .from('shift_needs')
+        .select('*')
+        .eq('store_id', storeId)
+        .order('date', { ascending: true })
+      return { data, error }
+    },
+
+    // 필요 인원 등록 (매니저 전용)
+    create: async (storeId, date, startTime, endTime, requiredStaff, dueDate) => {
+      const { data, error } = await supabase
+        .from('shift_needs')
+        .insert([{
+          store_id: storeId,
+          date,
+          start_time: startTime,
+          end_time: endTime,
+          required_staff: requiredStaff,
+          due_date: dueDate
+        }])
+        .select()
+        .single()
+      return { data, error }
+    }
   }
 }

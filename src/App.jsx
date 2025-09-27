@@ -7,32 +7,45 @@ import DashboardPage from './pages/DashboardPage'
 import ShiftDetailPage from './pages/ShiftDetailPage'
 import SwapRequestsPage from './pages/SwapRequestsPage'
 import StorePage from './pages/StorePage'
-import JoinStorePage from './pages/JoinStorePage'
-import ProtectedRoute from './components/ProtectedRoute'
+import ShiftNeedsPage from './pages/ShiftNeedsPage'
+
+// ✅ 보호 라우트 컴포넌트
+const ProtectedRoute = ({ user, children }) => {
+  if (!user) return <Navigate to="/login" replace />
+  return children
+}
 
 function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const init = async () => {
+    // 현재 사용자 확인
+    const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
       setLoading(false)
     }
-    init()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
-    })
+    getCurrentUser()
+
+    // 인증 상태 변경 감지
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        setUser(session?.user ?? null)
+        setLoading(false)
+      }
+    )
+
     return () => subscription.unsubscribe()
   }, [])
 
   if (loading) {
     return (
       <div className="container">
-        <div style={{ textAlign: 'center', marginTop: 50 }}>로딩 중...</div>
+        <div style={{ textAlign: 'center', marginTop: '50px' }}>
+          로딩 중...
+        </div>
       </div>
     )
   }
@@ -42,10 +55,43 @@ function App() {
       <div className="App">
         {user && <Navbar user={user} />}
         <Routes>
-          <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <LoginPage />} />
-          <Route path="/dashboard" element={user ? <DashboardPage user={user} /> : <Navigate to="/login" />} />
-          <Route path="/shift/:id" element={user ? <ShiftDetailPage user={user} /> : <Navigate to="/login" />} />
-          <Route path="/swap-requests" element={user ? <SwapRequestsPage user={user} /> : <Navigate to="/login" />} />
+          {/* 로그인 */}
+          <Route 
+            path="/login" 
+            element={user ? <Navigate to="/dashboard" /> : <LoginPage />} 
+          />
+
+          {/* 대시보드 */}
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute user={user}>
+                <DashboardPage user={user} />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* 근무표 상세 */}
+          <Route 
+            path="/shift/:id" 
+            element={
+              <ProtectedRoute user={user}>
+                <ShiftDetailPage user={user} />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* 교대 요청 */}
+          <Route 
+            path="/swap-requests" 
+            element={
+              <ProtectedRoute user={user}>
+                <SwapRequestsPage user={user} />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* 매장 관리 */}
           <Route
             path="/stores"
             element={
@@ -54,15 +100,19 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {/* 매니저 – 근무 필요 인원 설정 */}
           <Route
-            path="/stores/join"
+            path="/stores/:storeId/needs"
             element={
               <ProtectedRoute user={user}>
-                <JoinStorePage user={user} />
+                <ShiftNeedsPage user={user} />
               </ProtectedRoute>
             }
           />
-          <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} />} />
+
+          {/* 기본 경로 */}
+          <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </div>
