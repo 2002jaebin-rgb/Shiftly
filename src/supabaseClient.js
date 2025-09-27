@@ -188,5 +188,26 @@ export const db = {
         .single()
       return { data, error }
     }
+  },
+
+  shifts: {
+    listForUser: async () => {
+      const { data, error } = await supabase
+        .from('shifts')
+        .select('*')
+        .order('start_time', { ascending: true })
+      return { data, error }
+    },
+  
+    // ✅ 특정 매장에서 특정 유저의 shifts
+    listForUserInStore: async (storeId, userId) => {
+      const { data, error } = await supabase
+        .from('shifts')
+        .select('id, need_id, user_id, date, start_time, end_time')
+        .eq('store_id', storeId)
+        .eq('user_id', userId)
+        .order('date', { ascending: true })
+      return { data, error }
+    }
   }
 }

@@ -144,6 +144,15 @@ function App() {
             }
           />
 
+          <Route
+            path="/stores/:storeId/my-shifts"
+            element={
+              <ProtectedRoute user={user}>
+                <MyShiftsPage user={user} />
+              </ProtectedRoute>
+            }
+          />
+
           {/* 기본 경로 */}
           <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
           <Route path="*" element={<Navigate to="/" />} />
