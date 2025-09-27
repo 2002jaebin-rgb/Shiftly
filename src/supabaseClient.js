@@ -29,7 +29,7 @@ export const auth = {
       callback(session?.user || null)
     }),
 
-  // (옵션) 카카오 소셜 로그인 — 현재는 버튼만 남겨두고 계정 정보 연동은 추후
+  // (옵션) 카카오 소셜 로그인
   signInWithKakao: async () =>
     supabase.auth.signInWithOAuth({
       provider: 'kakao',
@@ -54,19 +54,30 @@ export const db = {
 
   // stores (매장)
   stores: {
-    // 매장 생성 (created_by는 DB default auth.uid()로 자동 세팅)
-    create: async (name) => {
-      const { data, error } = await supabase
+    // ✅ 매장 생성 시 매니저도 store_members에 자동 등록
+    create: async (name, userId) => {
+      // 1) store 생성 (created_by는 DB default auth.uid()로 자동 세팅)
+      const { data: store, error: err1 } = await supabase
         .from('stores')
         .insert([{ name }])
         .select()
         .single()
-      return { data, error }
+
+      if (err1) return { data: null, error: err1 }
+
+      // 2) 매니저를 store_members에 추가
+      const { error: err2 } = await supabase
+        .from('store_members')
+        .insert([{ store_id: store.id, user_id: userId, role: 'manager' }])
+
+      if (err2) return { data: null, error: err2 }
+
+      return { data: store, error: null }
     },
 
-    // 내가 속한 매장 목록: join 없이 2단계 조회 → 병합 (RLS 재귀 회피)
+    // 내가 속한 매장 목록
     listForUser: async (userId) => {
-      // 1) membership
+      // 1) membership 기반
       const { data: memberships, error } = await supabase
         .from('store_members')
         .select('store_id, role')
@@ -96,7 +107,7 @@ export const db = {
 
   // store_members (매장 합류)
   storeMembers: {
-    // 매장 참여 (staff로 자기 자신 추가)
+    // 직원으로 참여
     join: async (storeId, userId) => {
       const payload = { store_id: Number(storeId), user_id: userId, role: 'staff' }
       const { data, error } = await supabase
