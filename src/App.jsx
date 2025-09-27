@@ -11,8 +11,6 @@ import ShiftNeedsPage from './pages/ShiftNeedsPage'
 import JoinStorePage from './pages/JoinStorePage'
 import AvailabilityPage from './pages/AvailabilityPage'
 
-
-
 // ✅ 보호 라우트 컴포넌트
 const ProtectedRoute = ({ user, children }) => {
   if (!user) return <Navigate to="/login" replace />
@@ -105,6 +103,7 @@ function App() {
             }
           />
 
+          {/* 매장 합류 */}
           <Route
             path="/stores/join"
             element={
@@ -124,10 +123,11 @@ function App() {
             }
           />
 
+          {/* staff – 근무 가능 시간 제출 (store 단위) */}
           <Route
-            path="/stores/:storeId/needs/:needId/availability"
+            path="/stores/:storeId/availability"
             element={
-              <ProtectedRoute user={user}>
+              <ProtectedRoute user={user} loading={loading}>
                 <AvailabilityPage user={user} />
               </ProtectedRoute>
             }

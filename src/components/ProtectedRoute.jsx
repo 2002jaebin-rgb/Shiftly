@@ -1,13 +1,18 @@
 import React from 'react'
 import { Navigate } from 'react-router-dom'
 
-const ProtectedRoute = ({ user, children }) => {
-  if (!user) {
-    // 로그인 안 된 상태 → /login 으로 강제 이동
-    return <Navigate to="/login" replace />
+// ✅ 로딩 상태 반영한 ProtectedRoute
+const ProtectedRoute = ({ user, loading, children }) => {
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', marginTop: '50px' }}>
+        로딩 중...
+      </div>
+    )
   }
-  // 로그인 된 상태 → 원래 페이지 보여주기
+  if (!user) return <Navigate to="/login" replace />
   return children
 }
+
 
 export default ProtectedRoute

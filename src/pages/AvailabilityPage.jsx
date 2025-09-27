@@ -4,6 +4,8 @@ import { useParams } from 'react-router-dom'
 
 const AvailabilityPage = ({ user }) => {
   const { storeId } = useParams()
+  console.log("AvailabilityPage storeId:", storeId, "user:", user)   // ✅ 디버깅 로그
+  
   const [list, setList] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
