@@ -8,6 +8,8 @@ import ShiftDetailPage from './pages/ShiftDetailPage'
 import SwapRequestsPage from './pages/SwapRequestsPage'
 import StorePage from './pages/StorePage'
 import ShiftNeedsPage from './pages/ShiftNeedsPage'
+import JoinStorePage from './pages/JoinStorePage'
+
 
 // ✅ 보호 라우트 컴포넌트
 const ProtectedRoute = ({ user, children }) => {
@@ -97,6 +99,15 @@ function App() {
             element={
               <ProtectedRoute user={user}>
                 <StorePage user={user} />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/stores/join"
+            element={
+              <ProtectedRoute user={user}>
+                <JoinStorePage user={user} />
               </ProtectedRoute>
             }
           />
