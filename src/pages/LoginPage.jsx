@@ -70,7 +70,7 @@ const LoginPage = () => {
         <button
           type="button"
           className="btn btn-secondary"
-          onClick={() => auth.signInWithProvider('kakao')}
+          onClick={() => auth.signInWithKakao()}
           style={{ width: '100%' }}
         >
           카카오 계정으로 로그인
