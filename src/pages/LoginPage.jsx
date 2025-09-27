@@ -65,9 +65,17 @@ const LoginPage = () => {
         </button>
       </form>
 
-      <p style={{ marginTop: 12, fontSize: 14, color: '#666' }}>
-        테스트용 계정은 Supabase 대시보드 &gt; Authentication에서 이메일/비밀번호로 직접 생성해야 합니다.
-      </p>
+      {/* ✅ 카카오 로그인 버튼 */}
+      <div style={{ marginTop: 24 }}>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => auth.signInWithProvider('kakao')}
+          style={{ width: '100%' }}
+        >
+          카카오 계정으로 로그인
+        </button>
+      </div>
     </div>
   )
 }
