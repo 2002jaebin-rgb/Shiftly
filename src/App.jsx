@@ -11,6 +11,8 @@ import ShiftNeedsPage from './pages/ShiftNeedsPage'
 import JoinStorePage from './pages/JoinStorePage'
 import AvailabilityPage from './pages/AvailabilityPage'
 import ShiftAssignmentPage from './pages/ShiftAssignmentPage'
+import MyShiftsPage from './pages/MyShiftsPage'
+
 
 
 // ✅ 보호 라우트 컴포넌트
