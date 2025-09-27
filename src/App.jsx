@@ -10,6 +10,8 @@ import StorePage from './pages/StorePage'
 import ShiftNeedsPage from './pages/ShiftNeedsPage'
 import JoinStorePage from './pages/JoinStorePage'
 import AvailabilityPage from './pages/AvailabilityPage'
+import ShiftAssignmentPage from './pages/ShiftAssignmentPage'
+
 
 // ✅ 보호 라우트 컴포넌트
 const ProtectedRoute = ({ user, children }) => {
@@ -129,6 +131,15 @@ function App() {
             element={
               <ProtectedRoute user={user} loading={loading}>
                 <AvailabilityPage user={user} />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/stores/:storeId/assign"
+            element={
+              <ProtectedRoute user={user}>
+                <ShiftAssignmentPage user={user} />
               </ProtectedRoute>
             }
           />
