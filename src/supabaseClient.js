@@ -1,13 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 
-// 환경변수 (Cloudflare Pages에서 설정 필요)
+// 환경변수 (Cloudflare Pages에 설정해야 함)
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('⚠️ Supabase 환경변수가 설정되지 않았습니다.')
+}
 
 // Supabase 클라이언트 생성
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// 로그인 / 로그아웃 관련 간단한 함수들
+// 인증 관련 함수들
 export const auth = {
   // 이메일 + 비밀번호 로그인
   signIn: async (email, password) =>
@@ -17,28 +21,34 @@ export const auth = {
   signOut: async () =>
     supabase.auth.signOut(),
 
-  // 현재 로그인 세션 불러오기
+  // 현재 세션 가져오기
   getSession: () =>
     supabase.auth.getSession(),
 
-  // 로그인 상태 변경 감지 (로그인 / 로그아웃)
+  // 로그인 상태 변화 감지
   onAuthStateChange: (callback) =>
     supabase.auth.onAuthStateChange((_event, session) => {
       callback(session?.user || null)
     }),
+
+  // ✅ 카카오 소셜 로그인
+  signInWithKakao: async () =>
+    supabase.auth.signInWithOAuth({
+      provider: 'kakao',
+      options: {
+        redirectTo: window.location.origin + '/dashboard'
+      }
+    })
 }
 
-// DB 관련 간단한 함수들
+// (임시) DB 함수 — Dashboard에서 오류 방지용
 export const db = {
   shifts: {
-    // 특정 사용자의 시프트 목록 불러오기
-    listForUser: async (userId) => {
+    listForUser: async () => {
       const { data, error } = await supabase
         .from('shifts')
         .select('*')
         .order('start_time', { ascending: true })
-
-      // 일단 전체 shifts 불러오기 → 나중에 userId로 필터링 확장
       return { data, error }
     }
   }
