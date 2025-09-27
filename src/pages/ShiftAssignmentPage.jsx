@@ -81,6 +81,7 @@ const ShiftAssignmentPage = ({ user }) => {
       .select('user_id, role')
       .eq('store_id', storeId)
       .in('role', ['staff', 'manager'])
+    console.log("listMembersForStore result:", data, error)  // ✅ 추가
     return { data, error }
   }
 
