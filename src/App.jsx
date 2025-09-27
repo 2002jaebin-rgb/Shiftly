@@ -9,6 +9,8 @@ import SwapRequestsPage from './pages/SwapRequestsPage'
 import StorePage from './pages/StorePage'
 import ShiftNeedsPage from './pages/ShiftNeedsPage'
 import JoinStorePage from './pages/JoinStorePage'
+import AvailabilityPage from './pages/AvailabilityPage'
+
 
 
 // ✅ 보호 라우트 컴포넌트
@@ -118,6 +120,15 @@ function App() {
             element={
               <ProtectedRoute user={user}>
                 <ShiftNeedsPage user={user} />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/stores/:storeId/needs/:needId/availability"
+            element={
+              <ProtectedRoute user={user}>
+                <AvailabilityPage user={user} />
               </ProtectedRoute>
             }
           />
