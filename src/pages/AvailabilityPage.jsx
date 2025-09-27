@@ -3,11 +3,11 @@ import { db } from '../supabaseClient'
 import { useParams } from 'react-router-dom'
 
 const AvailabilityPage = ({ user }) => {
-  const { storeId, needId } = useParams()
+  const { storeId } = useParams()
   const [list, setList] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  
+
   // 입력 상태
   const [date, setDate] = useState('')
   const [startTime, setStartTime] = useState('')
@@ -15,7 +15,7 @@ const AvailabilityPage = ({ user }) => {
 
   const loadAvailabilities = async () => {
     setLoading(true)
-    const { data, error } = await db.availabilities.listForNeed(needId)
+    const { data, error } = await db.availabilities.listForStore(storeId)
     if (error) setError(error.message)
     setList(data || [])
     setLoading(false)
@@ -23,13 +23,12 @@ const AvailabilityPage = ({ user }) => {
 
   useEffect(() => {
     loadAvailabilities()
-  }, [needId])
+  }, [storeId])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     const { error } = await db.availabilities.create(
       storeId,
-      needId,
       date,
       startTime,
       endTime

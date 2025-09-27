@@ -127,7 +127,7 @@ export const db = {
     }
   },
 
-  // shift_needs (근무 필요 인원)
+  // shift_needs (근무 필요 인원) → 매니저 전용
   shiftNeeds: {
     listForStore: async (storeId) => {
       const { data, error } = await supabase
@@ -155,17 +155,20 @@ export const db = {
     }
   },
 
-  // availabilities (근무 가능 시간 제출)
+  // availabilities (근무 가능 시간 제출) → store 단위
   availabilities: {
-    listForNeed: async (needId) => {
+    // 특정 매장의 모든 availability
+    listForStore: async (storeId) => {
       const { data, error } = await supabase
         .from('availabilities')
         .select('id, user_id, date, start_time, end_time')
-        .eq('need_id', needId)
+        .eq('store_id', storeId)
+        .order('date', { ascending: true })
       return { data, error }
     },
 
-    create: async (storeId, needId, date, startTime, endTime) => {
+    // staff가 본인의 가능 시간 제출
+    create: async (storeId, date, startTime, endTime) => {
       const { data: userRes, error: userErr } = await supabase.auth.getUser()
       if (userErr || !userRes?.user?.id) {
         return { data: null, error: userErr || { message: '로그인 정보가 없습니다.' } }
@@ -176,8 +179,7 @@ export const db = {
         .from('availabilities')
         .insert([{
           store_id: storeId,
-          need_id: needId,
-          user_id: userId,   // ✅ RLS 정책 충족을 위해 반드시 포함
+          user_id: userId,   // ✅ RLS 충족
           date,
           start_time: startTime,
           end_time: endTime
