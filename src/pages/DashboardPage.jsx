@@ -9,68 +9,89 @@ const DashboardPage = ({ user }) => {
 
   useEffect(() => {
     loadShifts()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const loadShifts = async () => {
     try {
       setLoading(true)
-      setError('')
-      // 프로젝트 헬퍼 사용: 본인 시프트만
       const { data, error } = await db.shifts.getByUserId(user.id)
-      if (error) throw error
-      setShifts(data || [])
+      
+      if (error) {
+        setError('시프트를 불러오는 중 오류가 발생했습니다.')
+        console.error('Error loading shifts:', error)
+      } else {
+        setShifts(data || [])
+      }
     } catch (err) {
-      console.error(err)
-      setError('근무표를 불러오는 중 오류가 발생했습니다.')
+      setError('시프트를 불러오는 중 오류가 발생했습니다.')
+      console.error('Error loading shifts:', err)
     } finally {
       setLoading(false)
     }
   }
 
-  const formatRange = (row) => {
-    // 스키마가 TIMESTAMP 또는 DATE+TIME일 수 있으므로 모두 처리
-    const hasISO = (v) => typeof v === 'string' && v.includes('T')
-
-    if (row.start_time && hasISO(row.start_time)) {
-      // TIMESTAMP 케이스
-      const s = new Date(row.start_time)
-      const e = new Date(row.end_time)
-      const dateStr = s.toLocaleDateString()
-      const sTime = s.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      const eTime = e.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      return `${dateStr} ${sTime} ~ ${eTime}`
-    }
-
-    // DATE + TIME 케이스
-    const d = row.date || ''
-    const sTime = row.start_time || ''
-    const eTime = row.end_time || ''
-    return `${d} ${sTime} ~ ${eTime}`
+  const formatDate = (dateString) => {
+    const date = new Date(dateString)
+    return date.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'short'
+    })
   }
 
-  if (loading) return <div>근무표 불러오는 중…</div>
-  if (error) return <div style={{ color: 'red' }}>{error}</div>
+  const formatTime = (timeString) => {
+    return timeString || '시간 미정'
+  }
 
-  if (!shifts.length) {
-    return <div>등록된 근무표가 없습니다.</div>
+  if (loading) {
+    return (
+      <div className="container">
+        <h1>내 근무표</h1>
+        <div style={{ textAlign: 'center', marginTop: '50px' }}>
+          로딩 중...
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div>
-      <h2>내 근무표</h2>
-      <div style={{ display: 'grid', gap: 12 }}>
-        {shifts.map((shift) => (
-          <div key={shift.id} style={{ border: '1px solid #ddd', borderRadius: 6, padding: 12 }}>
-            <div><strong>근무</strong></div>
-            <div>{formatRange(shift)}</div>
-            <div>상태: {shift.status}</div>
-            <Link to={`/shift/${shift.id}`} className="btn btn-primary" style={{ marginTop: 8 }}>
-              상세보기
-            </Link>
-          </div>
-        ))}
-      </div>
+    <div className="container">
+      <h1>내 근무표</h1>
+      
+      {error && (
+        <div style={{ color: 'red', marginBottom: '20px' }}>
+          {error}
+        </div>
+      )}
+
+      {shifts.length === 0 ? (
+        <div className="card">
+          <p>아직 할당된 근무가 없습니다.</p>
+        </div>
+      ) : (
+        <div className="shift-grid">
+          {shifts.map((shift) => (
+            <div key={shift.id} className="shift-card">
+              <h3>{shift.title || '근무'}</h3>
+              <p><strong>날짜:</strong> {formatDate(shift.date)}</p>
+              <p><strong>시작 시간:</strong> {formatTime(shift.start_time)}</p>
+              <p><strong>종료 시간:</strong> {formatTime(shift.end_time)}</p>
+              <p><strong>위치:</strong> {shift.location || '미정'}</p>
+              {shift.notes && (
+                <p><strong>메모:</strong> {shift.notes}</p>
+              )}
+              <Link 
+                to={`/shift/${shift.id}`} 
+                className="btn btn-primary"
+                style={{ marginTop: '10px' }}
+              >
+                상세보기
+              </Link>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
