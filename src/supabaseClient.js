@@ -133,6 +133,7 @@ export const db = {
     }
   },
 
+  // shift_needs (근무 필요 인원)
   shiftNeeds: {
     // 매장별 필요 인원 조회
     listForStore: async (storeId) => {
@@ -155,6 +156,34 @@ export const db = {
           end_time: endTime,
           required_staff: requiredStaff,
           due_date: dueDate
+        }])
+        .select()
+        .single()
+      return { data, error }
+    }
+  },
+
+  // availabilities (근무 가능 시간 제출)
+  availabilities: {
+    // 특정 need(근무 수요)에 대한 모든 제출 조회
+    listForNeed: async (needId) => {
+      const { data, error } = await supabase
+        .from('availabilities')
+        .select('id, user_id, date, start_time, end_time')
+        .eq('need_id', needId)
+      return { data, error }
+    },
+
+    // staff가 본인의 가능 시간 제출
+    create: async (storeId, needId, date, startTime, endTime) => {
+      const { data, error } = await supabase
+        .from('availabilities')
+        .insert([{
+          store_id: storeId,
+          need_id: needId,
+          date,
+          start_time: startTime,
+          end_time: endTime
         }])
         .select()
         .single()
