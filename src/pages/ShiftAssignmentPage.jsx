@@ -16,18 +16,18 @@ const ShiftAssignmentPage = ({ user }) => {
   const [avails, setAvails] = useState([])
   const [shifts, setShifts] = useState([])
 
-  const [staff, setStaff] = useState([]) // {user_id} 목록
+  const [members, setMembers] = useState([]) // staff + manager
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
   // 선택 상태
   const [selectedNeedId, setSelectedNeedId] = useState('')
   const [selectedUserId, setSelectedUserId] = useState('')
-  const [overrideDate, setOverrideDate] = useState('')       // 필요시 날짜/시간 수동 지정
+  const [overrideDate, setOverrideDate] = useState('')
   const [overrideStart, setOverrideStart] = useState('')
   const [overrideEnd, setOverrideEnd] = useState('')
 
-  // 1) 현재 사용자 role 확인 (manager만 배정 폼 노출)
+  // 현재 사용자 role 확인
   const loadRole = async () => {
     const { data, error } = await supabase
       .from('store_members')
@@ -38,37 +38,33 @@ const ShiftAssignmentPage = ({ user }) => {
     if (!error && data) setRole(data.role)
   }
 
-  // 2) 수요, 가능시간, 배정, 스태프 목록 불러오기
+  // 데이터 로드
   const loadAll = async () => {
     setLoading(true)
     setError('')
 
-    // shift_needs
     const { data: needsData, error: needsErr } = await db.shiftNeeds.listForStore(storeId)
     if (needsErr) setError(needsErr.message)
 
-    // availabilities (store 단위)
     const { data: avData, error: avErr } = await db.availabilities.listForStore(storeId)
     if (avErr) setError(avErr.message)
 
-    // 이미 확정된 shifts
     const { data: shData, error: shErr } = await db.shifts.listForStore
       ? await db.shifts.listForStore(storeId)
       : await fetchShiftsFallback(storeId)
     if (shErr) setError(shErr.message)
 
-    // store_members (staff만)
-    const { data: staffData, error: staffErr } = await listStaffForStore(storeId)
-    if (staffErr) setError(staffErr.message)
+    const { data: membersData, error: membersErr } = await listMembersForStore(storeId)
+    if (membersErr) setError(membersErr.message)
 
     setNeeds(needsData || [])
     setAvails(avData || [])
     setShifts(shData || [])
-    setStaff(staffData || [])
+    setMembers(membersData || [])
     setLoading(false)
   }
 
-  // (보조) shifts listForStore가 없다면 직접 호출 (최신 supabaseClient에 추가 권장)
+  // shifts listForStore 없을 때 fallback
   const fetchShiftsFallback = async (storeId) => {
     const { data, error } = await supabase
       .from('shifts')
@@ -78,13 +74,13 @@ const ShiftAssignmentPage = ({ user }) => {
     return { data, error }
   }
 
-  // (보조) staff 목록: store_members 중 role='staff'
-  const listStaffForStore = async (storeId) => {
+  // staff + manager 모두 가져오기
+  const listMembersForStore = async (storeId) => {
     const { data, error } = await supabase
       .from('store_members')
       .select('user_id, role')
       .eq('store_id', storeId)
-      .eq('role', 'staff')
+      .in('role', ['staff', 'manager'])
     return { data, error }
   }
 
@@ -93,27 +89,21 @@ const ShiftAssignmentPage = ({ user }) => {
     loadAll()
   }, [storeId])
 
-  // 선택한 need의 기본 시간대/날짜
   const selectedNeed = useMemo(
     () => needs.find(n => String(n.id) === String(selectedNeedId)),
     [needs, selectedNeedId]
   )
 
-  // 배정 실행: shifts INSERT
   const handleAssign = async (e) => {
     e.preventDefault()
     if (!selectedUserId) return alert('직원을 선택하세요.')
-    // date/time은 need에서 가져오되, override 값이 있으면 override 사용
+
     const date = overrideDate || (selectedNeed?.date ?? '')
     const start = overrideStart || (selectedNeed?.start_time ?? '')
     const end   = overrideEnd   || (selectedNeed?.end_time   ?? '')
 
     if (!date || !start || !end) return alert('배정할 날짜/시간을 확인하세요.')
-    if (!selectedNeed && !overrideDate) {
-      return alert('어느 수요(need)에 대한 배정인지 선택하거나 날짜를 직접 지정하세요.')
-    }
 
-    // INSERT (supabaseClient에 db.shifts.assign 있으면 그거 사용)
     let resp
     if (db.shifts.assign) {
       resp = await db.shifts.assign(storeId, selectedUserId, date, start, end, selectedNeed?.id ?? null)
@@ -135,7 +125,6 @@ const ShiftAssignmentPage = ({ user }) => {
     const { error } = resp
     if (error) return alert(error.message)
 
-    // 초기화 & 갱신
     setSelectedUserId('')
     await loadAll()
   }
@@ -147,7 +136,7 @@ const ShiftAssignmentPage = ({ user }) => {
       <h2>근무 배정 (Store #{storeId})</h2>
       {error && <p style={{ color: 'red' }}>{error}</p>}
 
-      {/* 1) 근무 수요 목록 */}
+      {/* 수요 목록 */}
       <section style={{ border: '1px solid #ddd', borderRadius: 8, padding: 16 }}>
         <h3>근무 수요 (shift_needs)</h3>
         {needs.length === 0 ? (
@@ -171,7 +160,7 @@ const ShiftAssignmentPage = ({ user }) => {
         )}
       </section>
 
-      {/* 2) 직원 availabilities 목록 */}
+      {/* 직원 availabilities */}
       <section style={{ border: '1px solid #ddd', borderRadius: 8, padding: 16 }}>
         <h3>직원 가능 시간 (availabilities)</h3>
         {avails.length === 0 ? (
@@ -187,7 +176,7 @@ const ShiftAssignmentPage = ({ user }) => {
         )}
       </section>
 
-      {/* 3) 배정 폼 (매니저만) */}
+      {/* 배정 폼 */}
       {role === 'manager' ? (
         <section style={{ border: '1px solid #ddd', borderRadius: 8, padding: 16 }}>
           <h3>배정하기</h3>
@@ -202,7 +191,6 @@ const ShiftAssignmentPage = ({ user }) => {
                   </option>
                 ))}
               </select>
-              <small style={{ marginLeft: 8 }}>※ 선택하지 않으면 아래 **직접 입력한 날짜/시간**으로 배정합니다.</small>
             </div>
 
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -214,9 +202,9 @@ const ShiftAssignmentPage = ({ user }) => {
                   onChange={e => setSelectedUserId(e.target.value)}
                 >
                   <option value="">직원 선택</option>
-                  {staff.map(s => (
-                    <option key={s.user_id} value={s.user_id}>
-                      {s.user_id}
+                  {members.map(m => (
+                    <option key={m.user_id} value={m.user_id}>
+                      {m.user_id} ({m.role})
                     </option>
                   ))}
                 </select>
@@ -245,7 +233,7 @@ const ShiftAssignmentPage = ({ user }) => {
         </section>
       )}
 
-      {/* 4) 이미 배정된 근무표 */}
+      {/* 확정된 근무표 */}
       <section style={{ border: '1px solid #ddd', borderRadius: 8, padding: 16 }}>
         <h3>확정된 근무표 (shifts)</h3>
         {shifts.length === 0 ? (
