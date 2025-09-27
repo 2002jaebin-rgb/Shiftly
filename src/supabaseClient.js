@@ -29,7 +29,7 @@ export const auth = {
       callback(session?.user || null)
     }),
 
-  // ✅ 카카오 소셜 로그인
+  // (옵션) 카카오 소셜 로그인 — 현재는 버튼만 남겨두고 계정 정보 연동은 추후
   signInWithKakao: async () =>
     supabase.auth.signInWithOAuth({
       provider: 'kakao',
@@ -41,7 +41,7 @@ export const auth = {
 
 // DB 함수 모음
 export const db = {
-  // ✅ shifts
+  // shifts (MVP 데모용)
   shifts: {
     listForUser: async () => {
       const { data, error } = await supabase
@@ -52,30 +52,21 @@ export const db = {
     }
   },
 
-  // ✅ stores
+  // stores (매장)
   stores: {
-    create: async (name, userId) => {
-      // 1) store 생성
-      const { data: store, error: err1 } = await supabase
+    // 매장 생성 (created_by는 DB default auth.uid()로 자동 세팅)
+    create: async (name) => {
+      const { data, error } = await supabase
         .from('stores')
         .insert([{ name }])
         .select()
         .single()
-
-      if (err1) return { data: null, error: err1 }
-
-      // 2) store_members에 매니저 등록
-      const { error: err2 } = await supabase
-        .from('store_members')
-        .insert([{ store_id: store.id, user_id: userId, role: 'manager' }])
-
-      if (err2) return { data: null, error: err2 }
-
-      return { data: store, error: null }
+      return { data, error }
     },
 
+    // 내가 속한 매장 목록: join 없이 2단계 조회 → 병합 (RLS 재귀 회피)
     listForUser: async (userId) => {
-      // 1. store_members 조회
+      // 1) membership
       const { data: memberships, error } = await supabase
         .from('store_members')
         .select('store_id, role')
@@ -84,7 +75,7 @@ export const db = {
       if (error) return { data: null, error }
       if (!memberships || memberships.length === 0) return { data: [], error: null }
 
-      // 2. 관련 store 정보 따로 가져오기
+      // 2) store info
       const ids = memberships.map(m => m.store_id)
       const { data: stores, error: storeError } = await supabase
         .from('stores')
@@ -93,13 +84,27 @@ export const db = {
 
       if (storeError) return { data: null, error: storeError }
 
-      // 3. 병합
+      // 3) 병합
       const merged = memberships.map(m => ({
         role: m.role,
         store: stores.find(s => s.id === m.store_id) || null
       }))
 
       return { data: merged, error: null }
+    }
+  },
+
+  // store_members (매장 합류)
+  storeMembers: {
+    // 매장 참여 (staff로 자기 자신 추가)
+    join: async (storeId, userId) => {
+      const payload = { store_id: Number(storeId), user_id: userId, role: 'staff' }
+      const { data, error } = await supabase
+        .from('store_members')
+        .insert([payload])
+        .select()
+        .single()
+      return { data, error }
     }
   }
 }
