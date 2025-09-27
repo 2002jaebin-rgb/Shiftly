@@ -8,90 +8,36 @@ const DashboardPage = ({ user }) => {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    loadShifts()
-  }, [])
-
-  const loadShifts = async () => {
-    try {
+    const load = async () => {
       setLoading(true)
-      const { data, error } = await db.shifts.getByUserId(user.id)
-      
-      if (error) {
-        setError('시프트를 불러오는 중 오류가 발생했습니다.')
-        console.error('Error loading shifts:', error)
-      } else {
-        setShifts(data || [])
-      }
-    } catch (err) {
-      setError('시프트를 불러오는 중 오류가 발생했습니다.')
-      console.error('Error loading shifts:', err)
-    } finally {
+      setError('')
+      const { data, error } = await db.shifts.listForUser(user.id)
+      if (error) setError(error.message || '시프트 로드 실패')
+      setShifts(data || [])
       setLoading(false)
     }
-  }
+    load()
+  }, [user.id])
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'short'
-    })
-  }
-
-  const formatTime = (timeString) => {
-    return timeString || '시간 미정'
-  }
-
-  if (loading) {
-    return (
-      <div className="container">
-        <h1>내 근무표</h1>
-        <div style={{ textAlign: 'center', marginTop: '50px' }}>
-          로딩 중...
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <div>불러오는 중...</div>
+  if (error) return <div className="alert alert-error">{error}</div>
+  if (!shifts.length) return <div>예정된 시프트가 없습니다.</div>
 
   return (
-    <div className="container">
-      <h1>내 근무표</h1>
-      
-      {error && (
-        <div style={{ color: 'red', marginBottom: '20px' }}>
-          {error}
-        </div>
-      )}
-
-      {shifts.length === 0 ? (
-        <div className="card">
-          <p>아직 할당된 근무가 없습니다.</p>
-        </div>
-      ) : (
-        <div className="shift-grid">
-          {shifts.map((shift) => (
-            <div key={shift.id} className="shift-card">
-              <h3>{shift.title || '근무'}</h3>
-              <p><strong>날짜:</strong> {formatDate(shift.date)}</p>
-              <p><strong>시작 시간:</strong> {formatTime(shift.start_time)}</p>
-              <p><strong>종료 시간:</strong> {formatTime(shift.end_time)}</p>
-              <p><strong>위치:</strong> {shift.location || '미정'}</p>
-              {shift.notes && (
-                <p><strong>메모:</strong> {shift.notes}</p>
-              )}
-              <Link 
-                to={`/shift/${shift.id}`} 
-                className="btn btn-primary"
-                style={{ marginTop: '10px' }}
-              >
-                상세보기
-              </Link>
-            </div>
-          ))}
-        </div>
-      )}
+    <div>
+      <h2 style={{ marginBottom: 16 }}>내 시프트</h2>
+      <div className="card-list">
+        {shifts.map((row) => (
+          <div className="card" key={row.id}>
+            <h3>{row.title}</h3>
+            <p>{new Date(row.start_time).toLocaleString()} ~ {new Date(row.end_time).toLocaleString()}</p>
+            {row.location && <p>장소: {row.location}</p>}
+            <Link to={`/shift/${row.id}`} className="btn btn-primary" style={{ marginTop: 10 }}>
+              상세보기
+            </Link>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

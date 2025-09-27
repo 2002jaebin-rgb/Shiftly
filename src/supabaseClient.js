@@ -28,9 +28,18 @@ export const auth = {
     }),
 }
 
-// 임시 db 객체 (기능 없음, 에러 방지용)
+// DB 관련 간단한 함수들
 export const db = {
   shifts: {
-    listForUser: async () => ({ data: [], error: null })
+    // 특정 사용자의 시프트 목록 불러오기
+    listForUser: async (userId) => {
+      const { data, error } = await supabase
+        .from('shifts')
+        .select('*')
+        .order('start_time', { ascending: true })
+
+      // 일단 전체 shifts 불러오기 → 나중에 userId로 필터링 확장
+      return { data, error }
+    }
   }
 }
