@@ -54,18 +54,26 @@ export const db = {
 
   // stores (매장)
   stores: {
-    // ✅ 매장 생성 시 매니저도 store_members에 자동 등록
-    create: async (name, userId) => {
-      // 1) store 생성 (created_by는 DB default auth.uid()로 자동 세팅)
+    // ✅ 매장 생성: created_by는 DB default(auth.uid()), 그리고
+    //    현재 로그인 유저를 manager로 store_members에 자동 등록
+    create: async (name) => {
+      // 현재 로그인 사용자
+      const { data: userRes, error: userErr } = await supabase.auth.getUser()
+      if (userErr || !userRes?.user?.id) {
+        return { data: null, error: userErr || { message: '로그인 정보가 없습니다.' } }
+      }
+      const userId = userRes.user.id
+
+      // 1) store 생성
       const { data: store, error: err1 } = await supabase
         .from('stores')
-        .insert([{ name }])
+        .insert([{ name }]) // created_by는 DB default auth.uid()로 자동 세팅
         .select()
         .single()
 
       if (err1) return { data: null, error: err1 }
 
-      // 2) 매니저를 store_members에 추가
+      // 2) 매니저 자신을 store_members에 추가 (RLS: user_id=auth.uid() 조건 충족)
       const { error: err2 } = await supabase
         .from('store_members')
         .insert([{ store_id: store.id, user_id: userId, role: 'manager' }])
@@ -75,9 +83,9 @@ export const db = {
       return { data: store, error: null }
     },
 
-    // 내가 속한 매장 목록
+    // 내가 속한 매장 목록 (RLS 재귀 방지를 위해 2단계 조회)
     listForUser: async (userId) => {
-      // 1) membership 기반
+      // 1) membership
       const { data: memberships, error } = await supabase
         .from('store_members')
         .select('store_id, role')
@@ -86,7 +94,7 @@ export const db = {
       if (error) return { data: null, error }
       if (!memberships || memberships.length === 0) return { data: [], error: null }
 
-      // 2) store info
+      // 2) stores
       const ids = memberships.map(m => m.store_id)
       const { data: stores, error: storeError } = await supabase
         .from('stores')
@@ -108,7 +116,13 @@ export const db = {
   // store_members (매장 합류)
   storeMembers: {
     // 직원으로 참여
-    join: async (storeId, userId) => {
+    join: async (storeId) => {
+      const { data: userRes, error: userErr } = await supabase.auth.getUser()
+      if (userErr || !userRes?.user?.id) {
+        return { data: null, error: userErr || { message: '로그인 정보가 없습니다.' } }
+      }
+      const userId = userRes.user.id
+
       const payload = { store_id: Number(storeId), user_id: userId, role: 'staff' }
       const { data, error } = await supabase
         .from('store_members')
