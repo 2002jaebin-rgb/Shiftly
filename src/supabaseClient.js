@@ -27,3 +27,10 @@ export const auth = {
       callback(session?.user || null)
     }),
 }
+
+// 임시 db 객체 (기능 없음, 에러 방지용)
+export const db = {
+  shifts: {
+    listForUser: async () => ({ data: [], error: null })
+  }
+}
