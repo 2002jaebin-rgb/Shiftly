@@ -54,10 +54,8 @@ export const db = {
 
   // stores (매장)
   stores: {
-    // ✅ 매장 생성: created_by는 DB default(auth.uid()), 그리고
-    //    현재 로그인 유저를 manager로 store_members에 자동 등록
+    // ✅ 매장 생성
     create: async (name) => {
-      // 현재 로그인 사용자
       const { data: userRes, error: userErr } = await supabase.auth.getUser()
       if (userErr || !userRes?.user?.id) {
         return { data: null, error: userErr || { message: '로그인 정보가 없습니다.' } }
@@ -67,13 +65,13 @@ export const db = {
       // 1) store 생성
       const { data: store, error: err1 } = await supabase
         .from('stores')
-        .insert([{ name }]) // created_by는 DB default auth.uid()로 자동 세팅
+        .insert([{ name }])
         .select()
         .single()
 
       if (err1) return { data: null, error: err1 }
 
-      // 2) 매니저 자신을 store_members에 추가 (RLS: user_id=auth.uid() 조건 충족)
+      // 2) 매니저 자신을 store_members에 추가
       const { error: err2 } = await supabase
         .from('store_members')
         .insert([{ store_id: store.id, user_id: userId, role: 'manager' }])
@@ -83,9 +81,8 @@ export const db = {
       return { data: store, error: null }
     },
 
-    // 내가 속한 매장 목록 (RLS 재귀 방지를 위해 2단계 조회)
+    // 내가 속한 매장 목록
     listForUser: async (userId) => {
-      // 1) membership
       const { data: memberships, error } = await supabase
         .from('store_members')
         .select('store_id, role')
@@ -94,7 +91,6 @@ export const db = {
       if (error) return { data: null, error }
       if (!memberships || memberships.length === 0) return { data: [], error: null }
 
-      // 2) stores
       const ids = memberships.map(m => m.store_id)
       const { data: stores, error: storeError } = await supabase
         .from('stores')
@@ -103,7 +99,6 @@ export const db = {
 
       if (storeError) return { data: null, error: storeError }
 
-      // 3) 병합
       const merged = memberships.map(m => ({
         role: m.role,
         store: stores.find(s => s.id === m.store_id) || null
@@ -115,7 +110,6 @@ export const db = {
 
   // store_members (매장 합류)
   storeMembers: {
-    // 직원으로 참여
     join: async (storeId) => {
       const { data: userRes, error: userErr } = await supabase.auth.getUser()
       if (userErr || !userRes?.user?.id) {
@@ -135,7 +129,6 @@ export const db = {
 
   // shift_needs (근무 필요 인원)
   shiftNeeds: {
-    // 매장별 필요 인원 조회
     listForStore: async (storeId) => {
       const { data, error } = await supabase
         .from('shift_needs')
@@ -145,7 +138,6 @@ export const db = {
       return { data, error }
     },
 
-    // 필요 인원 등록 (매니저 전용)
     create: async (storeId, date, startTime, endTime, requiredStaff, dueDate) => {
       const { data, error } = await supabase
         .from('shift_needs')
@@ -165,7 +157,6 @@ export const db = {
 
   // availabilities (근무 가능 시간 제출)
   availabilities: {
-    // 특정 need(근무 수요)에 대한 모든 제출 조회
     listForNeed: async (needId) => {
       const { data, error } = await supabase
         .from('availabilities')
@@ -174,13 +165,19 @@ export const db = {
       return { data, error }
     },
 
-    // staff가 본인의 가능 시간 제출
     create: async (storeId, needId, date, startTime, endTime) => {
+      const { data: userRes, error: userErr } = await supabase.auth.getUser()
+      if (userErr || !userRes?.user?.id) {
+        return { data: null, error: userErr || { message: '로그인 정보가 없습니다.' } }
+      }
+      const userId = userRes.user.id
+
       const { data, error } = await supabase
         .from('availabilities')
         .insert([{
           store_id: storeId,
           need_id: needId,
+          user_id: userId,   // ✅ RLS 정책 충족을 위해 반드시 포함
           date,
           start_time: startTime,
           end_time: endTime
