@@ -18,12 +18,10 @@ export const auth = {
     supabase.auth.signInWithPassword({ email, password }),
 
   // 로그아웃
-  signOut: async () =>
-    supabase.auth.signOut(),
+  signOut: async () => supabase.auth.signOut(),
 
   // 현재 세션 가져오기
-  getSession: () =>
-    supabase.auth.getSession(),
+  getSession: () => supabase.auth.getSession(),
 
   // 로그인 상태 변화 감지
   onAuthStateChange: (callback) =>
@@ -41,9 +39,9 @@ export const auth = {
     })
 }
 
-// (임시) DB 함수 — Dashboard에서 오류 방지용
+// DB 함수 모음
 export const db = {
-  // 기존 shifts ...
+  // ✅ shifts
   shifts: {
     listForUser: async () => {
       const { data, error } = await supabase
@@ -54,7 +52,7 @@ export const db = {
     }
   },
 
-  // ✅ 매장 관련
+  // ✅ stores
   stores: {
     create: async (name, userId) => {
       // 1) store 생성
@@ -77,12 +75,31 @@ export const db = {
     },
 
     listForUser: async (userId) => {
-      const { data, error } = await supabase
+      // 1. store_members 조회
+      const { data: memberships, error } = await supabase
         .from('store_members')
-        .select('store_id, role, stores(name)')
+        .select('store_id, role')
         .eq('user_id', userId)
-      return { data, error }
+
+      if (error) return { data: null, error }
+      if (!memberships || memberships.length === 0) return { data: [], error: null }
+
+      // 2. 관련 store 정보 따로 가져오기
+      const ids = memberships.map(m => m.store_id)
+      const { data: stores, error: storeError } = await supabase
+        .from('stores')
+        .select('id, name')
+        .in('id', ids)
+
+      if (storeError) return { data: null, error: storeError }
+
+      // 3. 병합
+      const merged = memberships.map(m => ({
+        role: m.role,
+        store: stores.find(s => s.id === m.store_id) || null
+      }))
+
+      return { data: merged, error: null }
     }
   }
 }
-
