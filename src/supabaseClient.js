@@ -43,6 +43,7 @@ export const auth = {
 
 // (임시) DB 함수 — Dashboard에서 오류 방지용
 export const db = {
+  // 기존 shifts ...
   shifts: {
     listForUser: async () => {
       const { data, error } = await supabase
@@ -51,5 +52,37 @@ export const db = {
         .order('start_time', { ascending: true })
       return { data, error }
     }
+  },
+
+  // ✅ 매장 관련
+  stores: {
+    create: async (name, userId) => {
+      // 1) store 생성
+      const { data: store, error: err1 } = await supabase
+        .from('stores')
+        .insert([{ name, created_by: userId }])
+        .select()
+        .single()
+
+      if (err1) return { data: null, error: err1 }
+
+      // 2) store_members에 매니저 등록
+      const { error: err2 } = await supabase
+        .from('store_members')
+        .insert([{ store_id: store.id, user_id: userId, role: 'manager' }])
+
+      if (err2) return { data: null, error: err2 }
+
+      return { data: store, error: null }
+    },
+
+    listForUser: async (userId) => {
+      const { data, error } = await supabase
+        .from('store_members')
+        .select('store_id, role, stores(name)')
+        .eq('user_id', userId)
+      return { data, error }
+    }
   }
 }
+

@@ -6,6 +6,8 @@ import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import ShiftDetailPage from './pages/ShiftDetailPage'
 import SwapRequestsPage from './pages/SwapRequestsPage'
+import StorePage from './pages/StorePage'
+import ProtectedRoute from './components/ProtectedRoute'   // ✅ 추가!
 
 function App() {
   const [user, setUser] = useState(null)
@@ -47,25 +49,33 @@ function App() {
       <div className="App">
         {user && <Navbar user={user} />}
         <Routes>
-          <Route 
-            path="/login" 
-            element={user ? <Navigate to="/dashboard" /> : <LoginPage />} 
+          <Route
+            path="/login"
+            element={user ? <Navigate to="/dashboard" /> : <LoginPage />}
           />
-          <Route 
-            path="/dashboard" 
-            element={user ? <DashboardPage user={user} /> : <Navigate to="/login" />} 
+          <Route
+            path="/dashboard"
+            element={user ? <DashboardPage user={user} /> : <Navigate to="/login" />}
           />
-          <Route 
-            path="/shift/:id" 
-            element={user ? <ShiftDetailPage user={user} /> : <Navigate to="/login" />} 
+          <Route
+            path="/shift/:id"
+            element={user ? <ShiftDetailPage user={user} /> : <Navigate to="/login" />}
           />
-          <Route 
-            path="/swap-requests" 
-            element={user ? <SwapRequestsPage user={user} /> : <Navigate to="/login" />} 
+          <Route
+            path="/swap-requests"
+            element={user ? <SwapRequestsPage user={user} /> : <Navigate to="/login" />}
           />
-          <Route 
-            path="/" 
-            element={<Navigate to={user ? "/dashboard" : "/login"} />} 
+          <Route
+            path="/stores"
+            element={
+              <ProtectedRoute user={user}>
+                <StorePage user={user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/"
+            element={<Navigate to={user ? "/dashboard" : "/login"} />}
           />
         </Routes>
       </div>
