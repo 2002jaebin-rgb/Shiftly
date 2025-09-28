@@ -1,40 +1,35 @@
 import React from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { auth } from '../supabaseClient'
+import { Link } from 'react-router-dom'
 
 const Navbar = ({ user }) => {
-  const navigate = useNavigate()
-
-  const handleLogout = async () => {
-    const { error } = await auth.signOut()
-    if (!error) {
-      navigate('/login')
-    } else {
-      alert('로그아웃 중 오류가 발생했습니다.')
-    }
-  }
-
   return (
-    <nav className="navbar">
-      <div className="navbar-content">
-        <Link to="/dashboard" className="navbar-brand">
+    <header className="bg-white shadow-sm sticky top-0 z-50">
+      <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-3">
+        {/* 로고 / 앱 이름 */}
+        <Link to="/dashboard" className="text-xl font-semibold text-gray-800 tracking-tight">
           Shiftly
         </Link>
-        <ul className="navbar-nav">
-          <li>
-            <Link to="/dashboard">대시보드</Link>
-          </li>
-          <li>
-            <Link to="/swap-requests">교체 요청</Link>
-          </li>
-          <li>
-            <button onClick={handleLogout} className="btn btn-secondary">
-              로그아웃
-            </button>
-          </li>
-        </ul>
+
+        {/* 메뉴 */}
+        <nav className="flex items-center gap-6">
+          <Link to="/dashboard" className="text-gray-700 hover:text-gray-900 transition">
+            대시보드
+          </Link>
+          <Link to="/stores" className="text-gray-700 hover:text-gray-900 transition">
+            매장
+          </Link>
+          <Link to="/swap-requests" className="text-gray-700 hover:text-gray-900 transition">
+            교대 요청
+          </Link>
+
+          {user && (
+            <span className="text-sm text-gray-500 border-l pl-4">
+              {user.email}
+            </span>
+          )}
+        </nav>
       </div>
-    </nav>
+    </header>
   )
 }
 
