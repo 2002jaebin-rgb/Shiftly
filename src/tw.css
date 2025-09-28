@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 선택: 글로벌 톤 약간 정리 (필요 없으면 삭제 가능) */
+html, body {
+  height: 100%;
+}
