@@ -2,51 +2,87 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 
 const DashboardPage = ({ user }) => {
-  const menuItems = [
-    {
-      title: '내 매장',
-      desc: '매장 목록 확인 및 관리',
-      href: '/stores',
-      color: 'bg-blue-100 text-blue-700'
-    },
-    {
-      title: '근무 필요 인원',
-      desc: '매니저가 근무 수요를 설정',
-      href: '/stores/16/needs', // TODO: storeId 동적으로 바꿔야 함
-      color: 'bg-green-100 text-green-700'
-    },
-    {
-      title: '내 근무 가능 시간',
-      desc: '내 availability 제출',
-      href: '/stores/16/availability', // TODO: storeId 동적으로 바꿔야 함
-      color: 'bg-yellow-100 text-yellow-700'
-    },
-    {
-      title: '내 근무표',
-      desc: '배정된 근무 일정 확인',
-      href: '/stores/16/my-shifts', // TODO: storeId 동적으로 바꿔야 함
-      color: 'bg-purple-100 text-purple-700'
-    }
-  ]
-
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6">대시보드</h2>
+    <div className="space-y-8">
+      {/* 헤더 */}
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">대시보드</h1>
+        <p className="text-gray-600 mt-1">
+          환영합니다, <span className="font-medium">{user?.email}</span> 님 👋
+        </p>
+      </header>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {menuItems.map((item, idx) => (
+      {/* 카드 그리드 */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* 매장 관리 */}
+        <div className="bg-white shadow-sm rounded-xl p-6 flex flex-col">
+          <h2 className="text-lg font-semibold text-gray-800">매장 관리</h2>
+          <p className="text-sm text-gray-500 mt-2 flex-1">
+            매장을 생성하거나 참여하고, 소속된 매장을 확인하세요.
+          </p>
           <Link
-            key={idx}
-            to={item.href}
-            className={`rounded-xl shadow hover:shadow-md p-6 flex flex-col justify-between transition ${item.color}`}
+            to="/stores"
+            className="mt-4 inline-block bg-gray-800 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-900 transition"
           >
-            <div>
-              <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
-              <p className="text-sm">{item.desc}</p>
-            </div>
-            <span className="mt-4 text-sm font-medium underline">바로가기 →</span>
+            매장으로 이동
           </Link>
-        ))}
+        </div>
+
+        {/* 근무 필요 인원 설정 */}
+        <div className="bg-white shadow-sm rounded-xl p-6 flex flex-col">
+          <h2 className="text-lg font-semibold text-gray-800">근무 필요 인원</h2>
+          <p className="text-sm text-gray-500 mt-2 flex-1">
+            매니저는 날짜별 필요한 인원을 설정할 수 있습니다.
+          </p>
+          <Link
+            to="/stores"
+            className="mt-4 inline-block bg-gray-800 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-900 transition"
+          >
+            설정하기
+          </Link>
+        </div>
+
+        {/* 근무 가능 시간 제출 */}
+        <div className="bg-white shadow-sm rounded-xl p-6 flex flex-col">
+          <h2 className="text-lg font-semibold text-gray-800">근무 가능 시간</h2>
+          <p className="text-sm text-gray-500 mt-2 flex-1">
+            Staff는 본인이 가능한 시간을 제출할 수 있습니다.
+          </p>
+          <Link
+            to="/stores"
+            className="mt-4 inline-block bg-gray-800 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-900 transition"
+          >
+            제출하기
+          </Link>
+        </div>
+
+        {/* 내 근무표 */}
+        <div className="bg-white shadow-sm rounded-xl p-6 flex flex-col">
+          <h2 className="text-lg font-semibold text-gray-800">내 근무표</h2>
+          <p className="text-sm text-gray-500 mt-2 flex-1">
+            배정된 내 근무 일정을 확인하세요.
+          </p>
+          <Link
+            to="/stores"
+            className="mt-4 inline-block bg-gray-800 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-900 transition"
+          >
+            확인하기
+          </Link>
+        </div>
+
+        {/* 교대 요청 */}
+        <div className="bg-white shadow-sm rounded-xl p-6 flex flex-col">
+          <h2 className="text-lg font-semibold text-gray-800">교대 요청</h2>
+          <p className="text-sm text-gray-500 mt-2 flex-1">
+            교대 근무가 필요할 때 요청을 관리하세요.
+          </p>
+          <Link
+            to="/swap-requests"
+            className="mt-4 inline-block bg-gray-800 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-gray-900 transition"
+          >
+            요청하기
+          </Link>
+        </div>
       </div>
     </div>
   )
