@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { supabase } from './supabaseClient'
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { supabase, db } from './supabaseClient'
 
-// 공통 컴포넌트
-import Navbar from './components/Navbar'
+// 공통
 import Layout from './components/Layout'
+import Navbar from './components/Navbar'
 
 // 페이지
 import LoginPage from './pages/LoginPage'
@@ -17,8 +17,10 @@ import JoinStorePage from './pages/JoinStorePage'
 import AvailabilityPage from './pages/AvailabilityPage'
 import MyShiftsPage from './pages/MyShiftsPage'
 import ShiftAssignmentPage from './pages/ShiftAssignmentPage'
+import StoreHomePage from './pages/StoreHomePage'
+import OnboardingPage from './pages/OnboardingPage'
 
-// ✅ 보호 라우트 컴포넌트
+// 보호 라우트
 const ProtectedRoute = ({ user, children }) => {
   if (!user) return <Navigate to="/login" replace />
   return children
@@ -27,24 +29,31 @@ const ProtectedRoute = ({ user, children }) => {
 function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [profile, setProfile] = useState(null)
 
   useEffect(() => {
-    // 현재 사용자 확인
-    const getCurrentUser = async () => {
+    const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
       setLoading(false)
+      if (user) {
+        const { data: p } = await db.profiles.getMine()
+        setProfile(p || null)
+      }
     }
-    getCurrentUser()
-
-    // 인증 상태 변경 감지
+    init()
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
         setUser(session?.user ?? null)
         setLoading(false)
+        if (session?.user) {
+          const { data: p } = await db.profiles.getMine()
+          setProfile(p || null)
+        } else {
+          setProfile(null)
+        }
       }
     )
-
     return () => subscription.unsubscribe()
   }, [])
 
@@ -63,17 +72,28 @@ function App() {
       <Layout user={user}>
         <Routes>
           {/* 로그인 */}
+          <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <LoginPage />} />
+
+          {/* 온보딩(역할 선택) */}
           <Route
-            path="/login"
-            element={user ? <Navigate to="/dashboard" /> : <LoginPage />}
+            path="/onboarding"
+            element={
+              <ProtectedRoute user={user}>
+                <OnboardingPage />
+              </ProtectedRoute>
+            }
           />
 
-          {/* 대시보드 */}
+          {/* 대시보드: 역할/소속 매장에 따라 리디렉션 가드 */}
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute user={user}>
-                <DashboardPage user={user} />
+                {profile && !profile.account_role ? (
+                  <Navigate to="/onboarding" replace />
+                ) : (
+                  <DashboardPage user={user} />
+                )}
               </ProtectedRoute>
             }
           />
@@ -98,12 +118,22 @@ function App() {
             }
           />
 
-          {/* 매장 관리 */}
+          {/* 매장 리스트/생성 */}
           <Route
             path="/stores"
             element={
               <ProtectedRoute user={user}>
                 <StorePage user={user} />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 매장 기본페이지(이번 주 캘린더) */}
+          <Route
+            path="/stores/:storeId"
+            element={
+              <ProtectedRoute user={user}>
+                <StoreHomePage user={user} />
               </ProtectedRoute>
             }
           />
@@ -118,7 +148,7 @@ function App() {
             }
           />
 
-          {/* 매니저 – 근무 필요 인원 설정 */}
+          {/* 매니저 – 근무 필요 인원 설정(레거시/보조) */}
           <Route
             path="/stores/:storeId/needs"
             element={
@@ -128,7 +158,7 @@ function App() {
             }
           />
 
-          {/* staff/manager – 근무 가능 시간 제출 */}
+          {/* staff/manager – 근무 가능 시간 제출(레거시/보조) */}
           <Route
             path="/stores/:storeId/availability"
             element={
