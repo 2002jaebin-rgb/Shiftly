@@ -1,41 +1,51 @@
-import React, { useState, useEffect } from 'react'
+import React from 'react'
 import { Link } from 'react-router-dom'
-import { db } from '../supabaseClient'
 
 const DashboardPage = ({ user }) => {
-  const [shifts, setShifts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true)
-      setError('')
-      const { data, error } = await db.shifts.listForUser(user.id)
-      if (error) setError(error.message || '시프트 로드 실패')
-      setShifts(data || [])
-      setLoading(false)
+  const menuItems = [
+    {
+      title: '내 매장',
+      desc: '매장 목록 확인 및 관리',
+      href: '/stores',
+      color: 'bg-blue-100 text-blue-700'
+    },
+    {
+      title: '근무 필요 인원',
+      desc: '매니저가 근무 수요를 설정',
+      href: '/stores/16/needs', // TODO: storeId 동적으로 바꿔야 함
+      color: 'bg-green-100 text-green-700'
+    },
+    {
+      title: '내 근무 가능 시간',
+      desc: '내 availability 제출',
+      href: '/stores/16/availability', // TODO: storeId 동적으로 바꿔야 함
+      color: 'bg-yellow-100 text-yellow-700'
+    },
+    {
+      title: '내 근무표',
+      desc: '배정된 근무 일정 확인',
+      href: '/stores/16/my-shifts', // TODO: storeId 동적으로 바꿔야 함
+      color: 'bg-purple-100 text-purple-700'
     }
-    load()
-  }, [user.id])
-
-  if (loading) return <div>불러오는 중...</div>
-  if (error) return <div className="alert alert-error">{error}</div>
-  if (!shifts.length) return <div>예정된 시프트가 없습니다.</div>
+  ]
 
   return (
     <div>
-      <h2 style={{ marginBottom: 16 }}>내 시프트</h2>
-      <div className="card-list">
-        {shifts.map((row) => (
-          <div className="card" key={row.id}>
-            <h3>{row.title}</h3>
-            <p>{new Date(row.start_time).toLocaleString()} ~ {new Date(row.end_time).toLocaleString()}</p>
-            {row.location && <p>장소: {row.location}</p>}
-            <Link to={`/shift/${row.id}`} className="btn btn-primary" style={{ marginTop: 10 }}>
-              상세보기
-            </Link>
-          </div>
+      <h2 className="text-2xl font-bold mb-6">대시보드</h2>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {menuItems.map((item, idx) => (
+          <Link
+            key={idx}
+            to={item.href}
+            className={`rounded-xl shadow hover:shadow-md p-6 flex flex-col justify-between transition ${item.color}`}
+          >
+            <div>
+              <h3 className="text-xl font-semibold mb-2">{item.title}</h3>
+              <p className="text-sm">{item.desc}</p>
+            </div>
+            <span className="mt-4 text-sm font-medium underline">바로가기 →</span>
+          </Link>
         ))}
       </div>
     </div>

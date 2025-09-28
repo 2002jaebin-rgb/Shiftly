@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { db } from '../supabaseClient'
 
 const StorePage = ({ user }) => {
@@ -6,6 +6,7 @@ const StorePage = ({ user }) => {
   const [loading, setLoading] = useState(true)
   const [newStoreName, setNewStoreName] = useState('')
   const [error, setError] = useState('')
+  const [showCreate, setShowCreate] = useState(false)
 
   const loadStores = async () => {
     setLoading(true)
@@ -23,13 +24,12 @@ const StorePage = ({ user }) => {
   const handleCreateStore = async (e) => {
     e.preventDefault()
     if (!newStoreName.trim()) return
-    const { data, error } = await db.stores.create(newStoreName.trim())
+    const { error } = await db.stores.create(newStoreName.trim())
     if (error) {
-      alert(error.message || '매장 생성 실패')
+      alert(error.message)
     } else {
-      // 매장 만든 사람은 SELECT 정책에서 created_by=auth.uid()로 즉시 보임
-      alert(`매장 생성 완료. 매장 ID: ${data.id}`)
       setNewStoreName('')
+      setShowCreate(false)
       await loadStores()
     }
   }
@@ -37,49 +37,70 @@ const StorePage = ({ user }) => {
   if (loading) return <p>불러오는 중...</p>
 
   return (
-    <div style={{ maxWidth: 720, margin: '24px auto' }}>
-      <h2>내 매장</h2>
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">내 매장</h2>
+        <button
+          onClick={() => setShowCreate(!showCreate)}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700"
+        >
+          매장 만들기
+        </button>
+      </div>
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p className="text-red-500">{error}</p>}
 
       {stores.length === 0 ? (
-        <p>아직 매장이 없습니다.</p>
+        <div className="bg-gray-100 rounded-lg p-6 text-center text-gray-500">
+          아직 매장이 없습니다.
+        </div>
       ) : (
-        <div style={{ marginBottom: 16 }}>
-          <ul>
-            {stores.map((s, idx) => (
-              <li key={idx} style={{ marginBottom: 8 }}>
-                <b>{s.store?.name || '(이름 없음)'}</b> <span style={{ color: '#666' }}>({s.role})</span>
-              </li>
-            ))}
-          </ul>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {stores.map((s, idx) => (
+            <div
+              key={idx}
+              className="bg-white rounded-xl shadow hover:shadow-md p-6 transition"
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-semibold">{s.store?.name}</h3>
+                  <p className="text-sm text-gray-500">{s.role}</p>
+                </div>
+                <a
+                  href={`/stores/${s.store?.id}/needs`}
+                  className="text-blue-600 hover:underline"
+                >
+                  관리 →
+                </a>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      <div className="card" style={{ padding: 16, marginTop: 16 }}>
-        <h3>매장 만들기 (매니저)</h3>
-        <form onSubmit={handleCreateStore} style={{ marginTop: 12 }}>
-          <input
-            type="text"
-            placeholder="매장 이름"
-            value={newStoreName}
-            onChange={(e) => setNewStoreName(e.target.value)}
-          />
-          <button type="submit" className="btn btn-primary" style={{ marginLeft: 8 }}>
-            만들기
-          </button>
+      {showCreate && (
+        <form
+          onSubmit={handleCreateStore}
+          className="mt-6 bg-white p-6 rounded-xl shadow"
+        >
+          <h3 className="text-lg font-bold mb-4">새 매장 추가</h3>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="매장 이름"
+              value={newStoreName}
+              onChange={(e) => setNewStoreName(e.target.value)}
+              className="flex-1 border rounded-lg p-2"
+            />
+            <button
+              type="submit"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700"
+            >
+              저장
+            </button>
+          </div>
         </form>
-        <p style={{ fontSize: 13, color: '#666', marginTop: 8 }}>
-          매장 생성 후 표시되는 <b>매장 ID</b>를 직원에게 전달하세요. 직원은 ‘매장 참여’에서 해당 ID로 합류할 수 있습니다.
-        </p>
-      </div>
-
-      <div className="card" style={{ padding: 16, marginTop: 16 }}>
-        <h3>직원(알바) 안내</h3>
-        <p style={{ fontSize: 14, color: '#444' }}>
-          상단 메뉴 또는 주소창에서 <b>/stores/join</b> 페이지로 이동하여 매니저가 준 <b>매장 ID</b>를 입력하세요.
-        </p>
-      </div>
+      )}
     </div>
   )
 }
