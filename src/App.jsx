@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
-import { supabase, db } from './supabaseClient'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { supabase } from './supabaseClient'
 
-// 공통
-import Layout from './components/Layout'
+// 공통 컴포넌트
 import Navbar from './components/Navbar'
+import Layout from './components/Layout'
 
 // 페이지
 import LoginPage from './pages/LoginPage'
@@ -20,7 +20,7 @@ import ShiftAssignmentPage from './pages/ShiftAssignmentPage'
 import StoreHomePage from './pages/StoreHomePage'
 import OnboardingPage from './pages/OnboardingPage'
 
-// 보호 라우트
+// ✅ 보호 라우트 컴포넌트
 const ProtectedRoute = ({ user, children }) => {
   if (!user) return <Navigate to="/login" replace />
   return children
@@ -29,31 +29,25 @@ const ProtectedRoute = ({ user, children }) => {
 function App() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [profile, setProfile] = useState(null)
 
   useEffect(() => {
-    const init = async () => {
+    // 현재 사용자 확인
+    const getCurrentUser = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       setUser(user)
       setLoading(false)
-      if (user) {
-        const { data: p } = await db.profiles.getMine()
-        setProfile(p || null)
-      }
     }
-    init()
+    getCurrentUser()
+
+    // 인증 상태 변경 감지
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      (event, session) => {
+        console.log('Auth event:', event)  // ✅ 이벤트 로그 찍기
         setUser(session?.user ?? null)
         setLoading(false)
-        if (session?.user) {
-          const { data: p } = await db.profiles.getMine()
-          setProfile(p || null)
-        } else {
-          setProfile(null)
-        }
       }
     )
+
     return () => subscription.unsubscribe()
   }, [])
 
@@ -72,28 +66,17 @@ function App() {
       <Layout user={user}>
         <Routes>
           {/* 로그인 */}
-          <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <LoginPage />} />
-
-          {/* 온보딩(역할 선택) */}
           <Route
-            path="/onboarding"
-            element={
-              <ProtectedRoute user={user}>
-                <OnboardingPage />
-              </ProtectedRoute>
-            }
+            path="/login"
+            element={user ? <Navigate to="/dashboard" /> : <LoginPage />}
           />
 
-          {/* 대시보드: 역할/소속 매장에 따라 리디렉션 가드 */}
+          {/* 대시보드 */}
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute user={user}>
-                {profile && !profile.account_role ? (
-                  <Navigate to="/onboarding" replace />
-                ) : (
-                  <DashboardPage user={user} />
-                )}
+                <DashboardPage user={user} />
               </ProtectedRoute>
             }
           />
@@ -118,22 +101,12 @@ function App() {
             }
           />
 
-          {/* 매장 리스트/생성 */}
+          {/* 매장 관리 */}
           <Route
             path="/stores"
             element={
               <ProtectedRoute user={user}>
                 <StorePage user={user} />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* 매장 기본페이지(이번 주 캘린더) */}
-          <Route
-            path="/stores/:storeId"
-            element={
-              <ProtectedRoute user={user}>
-                <StoreHomePage user={user} />
               </ProtectedRoute>
             }
           />
@@ -148,7 +121,7 @@ function App() {
             }
           />
 
-          {/* 매니저 – 근무 필요 인원 설정(레거시/보조) */}
+          {/* 매니저 – 근무 필요 인원 설정 */}
           <Route
             path="/stores/:storeId/needs"
             element={
@@ -158,7 +131,7 @@ function App() {
             }
           />
 
-          {/* staff/manager – 근무 가능 시간 제출(레거시/보조) */}
+          {/* staff/manager – 근무 가능 시간 제출 */}
           <Route
             path="/stores/:storeId/availability"
             element={
@@ -184,6 +157,26 @@ function App() {
             element={
               <ProtectedRoute user={user}>
                 <ShiftAssignmentPage user={user} />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 매장 기본 페이지 (이번 주 캘린더) */}
+          <Route
+            path="/stores/:storeId"
+            element={
+              <ProtectedRoute user={user}>
+                <StoreHomePage user={user} />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* 온보딩 */}
+          <Route
+            path="/onboarding"
+            element={
+              <ProtectedRoute user={user}>
+                <OnboardingPage user={user} />
               </ProtectedRoute>
             }
           />

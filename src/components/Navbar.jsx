@@ -6,18 +6,22 @@ const Navbar = ({ user }) => {
   const navigate = useNavigate()
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    navigate('/login')
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error('로그아웃 에러:', error.message)
+    } else {
+      console.log('로그아웃 성공')
+      navigate('/login', { replace: true })
+      window.location.reload()   // ✅ 세션 확실히 초기화
+    }
   }
 
   return (
     <nav className="bg-white shadow-md px-6 py-3 flex justify-between items-center">
-      {/* 로고 */}
       <Link to="/dashboard" className="text-xl font-bold text-[#3AC0C3]">
         쉽표
       </Link>
 
-      {/* 메뉴 */}
       <div className="flex gap-4 items-center">
         <Link to="/dashboard" className="text-gray-700 hover:text-[#3AC0C3]">
           대시보드
@@ -29,7 +33,6 @@ const Navbar = ({ user }) => {
           교대 요청
         </Link>
 
-        {/* 로그아웃 버튼 */}
         {user && (
           <button
             onClick={handleLogout}
