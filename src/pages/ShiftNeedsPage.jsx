@@ -70,57 +70,81 @@ const ShiftNeedsPage = ({ user }) => {
   if (loading) return <p>불러오는 중...</p>
 
   return (
-    <div style={{ maxWidth: 600, margin: '20px auto' }}>
-      <h2>근무 필요 인원 설정</h2>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+    <div className="max-w-2xl mx-auto space-y-6">
+      <h2 className="text-2xl font-bold text-gray-800">근무 필요 인원</h2>
+      {error && <p className="text-red-500">{error}</p>}
 
-      <ul>
-        {needs.map((n) => (
-          <li key={n.id}>
-            {n.date} {n.start_time}~{n.end_time}, {n.required_staff}명 필요
-            (마감일: {n.due_date ? new Date(n.due_date).toLocaleString() : '없음'})
-          </li>
-        ))}
-      </ul>
+      {/* 근무 필요 인원 리스트 */}
+      <div className="space-y-3">
+        {needs.length === 0 ? (
+          <p className="text-gray-500">아직 등록된 근무 필요 인원이 없습니다.</p>
+        ) : (
+          needs.map((n) => (
+            <div
+              key={n.id}
+              className="bg-white shadow-sm rounded-xl p-4 border border-gray-100"
+            >
+              <p className="text-gray-800 font-medium">
+                {n.date} {n.start_time} ~ {n.end_time}
+              </p>
+              <p className="text-sm text-gray-500">
+                필요 인원: {n.required_staff}명
+              </p>
+              <p className="text-sm text-gray-400">
+                마감일: {n.due_date ? new Date(n.due_date).toLocaleString() : '없음'}
+              </p>
+            </div>
+          ))
+        )}
+      </div>
 
       {/* ✅ 매니저만 등록 폼 보이게 */}
       {role === 'manager' && (
-        <form onSubmit={handleCreate} style={{ marginTop: 20 }}>
-          <h3>새 필요 인원 추가</h3>
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            required
-          />
-          <input
-            type="time"
-            value={startTime}
-            onChange={(e) => setStartTime(e.target.value)}
-            required
-          />
-          <input
-            type="time"
-            value={endTime}
-            onChange={(e) => setEndTime(e.target.value)}
-            required
-          />
-          <input
-            type="number"
-            min="1"
-            value={requiredStaff}
-            onChange={(e) => setRequiredStaff(e.target.value)}
-            required
-          />
-          <input
-            type="datetime-local"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-          />
+        <form
+          onSubmit={handleCreate}
+          className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-4"
+        >
+          <h3 className="text-lg font-semibold text-gray-800">새 필요 인원 추가</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              required
+              className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#3AC0C3] focus:outline-none"
+            />
+            <input
+              type="time"
+              value={startTime}
+              onChange={(e) => setStartTime(e.target.value)}
+              required
+              className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#3AC0C3] focus:outline-none"
+            />
+            <input
+              type="time"
+              value={endTime}
+              onChange={(e) => setEndTime(e.target.value)}
+              required
+              className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#3AC0C3] focus:outline-none"
+            />
+            <input
+              type="number"
+              min="1"
+              value={requiredStaff}
+              onChange={(e) => setRequiredStaff(e.target.value)}
+              required
+              className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#3AC0C3] focus:outline-none"
+            />
+            <input
+              type="datetime-local"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-[#3AC0C3] focus:outline-none sm:col-span-2"
+            />
+          </div>
           <button
             type="submit"
-            className="btn btn-primary"
-            style={{ marginLeft: 8 }}
+            className="bg-[#3AC0C3] text-white px-4 py-2 rounded-lg shadow hover:bg-[#2FA6A9] transition"
           >
             등록
           </button>
