@@ -3,7 +3,7 @@ import Navbar from './Navbar'
 
 const Layout = ({ user, children }) => {
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-[#F3F4F6]">
       {/* 상단바 */}
       <Navbar user={user} />
 
@@ -12,9 +12,9 @@ const Layout = ({ user, children }) => {
         {children}
       </main>
 
-      {/* 푸터 (선택 사항) */}
+      {/* 푸터 */}
       <footer className="border-t py-6 text-center text-sm text-gray-500">
-        © {new Date().getFullYear()} Shiftly. All rights reserved.
+        근무표는 간단하게, 일상에는 쉼표를
       </footer>
     </div>
   )
