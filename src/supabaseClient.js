@@ -43,7 +43,7 @@ const mondayOf = (d) => {
 
 // DB
 export const db = {
-  // shifts (데모용)
+  // shifts (데모)
   shifts: {
     listForUser: async () => {
       const { data, error } = await supabase
@@ -54,7 +54,7 @@ export const db = {
     }
   },
 
-  // 프로필 (회원 역할 저장)
+  // profiles
   profiles: {
     getMine: async () => {
       const { data: userRes } = await supabase.auth.getUser()
@@ -91,20 +91,24 @@ export const db = {
         }
       }
       const userId = userRes.user.id
-      // 1) store 생성
+
+      // 1) store 생성 시 created_by 포함 (⚠️ 중요)
       const { data: store, error: err1 } = await supabase
         .from('stores')
-        .insert([{ name }])
+        .insert([{ name, created_by: userId }])
         .select()
         .single()
       if (err1) return { data: null, error: err1 }
+
       // 2) manager membership
-      const { error: err2 } = await supabase
-        .from('store_members')
-        .insert([{ store_id: store.id, user_id: userId, role: 'manager' }])
+      const { error: err2 } = await supabase.from('store_members').insert([
+        { store_id: store.id, user_id: userId, role: 'manager' }
+      ])
       if (err2) return { data: null, error: err2 }
-      // 3) 기본 설정 생성
+
+      // 3) 기본 설정
       await supabase.from('store_settings').upsert({ store_id: store.id })
+
       return { data: store, error: null }
     },
 
@@ -163,6 +167,7 @@ export const db = {
   },
 
   // ====== 주 단위 ======
+
   storeSettings: {
     get: async (storeId) => {
       const { data, error } = await supabase
@@ -305,7 +310,14 @@ export const db = {
       const { data, error } = await supabase
         .from('shifts')
         .insert([
-          { store_id: storeId, store_week_id, weekday, user_id, start_time, end_time }
+          {
+            store_id: storeId,
+            store_week_id,
+            weekday,
+            user_id,
+            start_time,
+            end_time
+          }
         ])
         .select()
         .single()
@@ -313,7 +325,7 @@ export const db = {
     }
   },
 
-  // ====== 기존 일 단위 API ======
+  // ====== 기존 일 단위 (레거시) ======
   shiftNeeds: {
     listForStore: async (storeId) => {
       const { data, error } = await supabase
