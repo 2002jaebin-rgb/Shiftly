@@ -43,7 +43,7 @@ const mondayOf = (d) => {
 
 // DB
 export const db = {
-  // shifts (데모)
+  // 기존 shifts (데모)
   shifts: {
     listForUser: async () => {
       const { data, error } = await supabase
@@ -54,7 +54,7 @@ export const db = {
     }
   },
 
-  // profiles
+  // 프로필 (가입시 역할 저장/조회)
   profiles: {
     getMine: async () => {
       const { data: userRes } = await supabase.auth.getUser()
@@ -91,24 +91,20 @@ export const db = {
         }
       }
       const userId = userRes.user.id
-
-      // 1) store 생성 시 created_by 포함 (⚠️ 중요)
+      // 1) store
       const { data: store, error: err1 } = await supabase
         .from('stores')
-        .insert([{ name, created_by: userId }])
+        .insert([{ name }])
         .select()
         .single()
       if (err1) return { data: null, error: err1 }
-
       // 2) manager membership
-      const { error: err2 } = await supabase.from('store_members').insert([
-        { store_id: store.id, user_id: userId, role: 'manager' }
-      ])
+      const { error: err2 } = await supabase
+        .from('store_members')
+        .insert([{ store_id: store.id, user_id: userId, role: 'manager' }])
       if (err2) return { data: null, error: err2 }
-
-      // 3) 기본 설정
-      await supabase.from('store_settings').upsert({ store_id: store.id })
-
+      // 3) 기본 설정 레코드
+      await supabase.from('store_settings').upsert({ store_id: store.id }) // 기본값으로 생성
       return { data: store, error: null }
     },
 
@@ -168,6 +164,7 @@ export const db = {
 
   // ====== 주 단위 ======
 
+  // 매장 설정
   storeSettings: {
     get: async (storeId) => {
       const { data, error } = await supabase
@@ -189,9 +186,24 @@ export const db = {
         .select()
         .single()
       return { data, error }
+    },
+    // ✅ 추가: create 함수 (프론트엔드 호환용)
+    create: async (storeId, { open_days, open_hours, due_dow, due_time }) => {
+      const payload = { store_id: Number(storeId) }
+      if (open_days !== undefined) payload.open_days = open_days
+      if (open_hours !== undefined) payload.open_hours = open_hours
+      if (due_dow !== undefined) payload.due_dow = due_dow
+      if (due_time !== undefined) payload.due_time = due_time
+      const { data, error } = await supabase
+        .from('store_settings')
+        .insert(payload)
+        .select()
+        .single()
+      return { data, error }
     }
   },
 
+  // 주 레코드
   storeWeeks: {
     getOrCreate: async (storeId, anyDateInWeek = new Date()) => {
       const week_start = mondayOf(anyDateInWeek)
@@ -239,6 +251,7 @@ export const db = {
     }
   },
 
+  // 주간 수요
   weekNeeds: {
     list: async (store_week_id) => {
       const { data, error } = await supabase
@@ -248,7 +261,13 @@ export const db = {
         .order('weekday', { ascending: true })
       return { data, error }
     },
-    create: async (store_week_id, weekday, start_time, end_time, required_staff) => {
+    create: async (
+      store_week_id,
+      weekday,
+      start_time,
+      end_time,
+      required_staff
+    ) => {
       const { data, error } = await supabase
         .from('week_shift_needs')
         .insert([
@@ -260,6 +279,7 @@ export const db = {
     }
   },
 
+  // 주간 availability
   availabilitiesWeekly: {
     listForWeek: async (store_week_id) => {
       const { data, error } = await supabase
@@ -290,6 +310,7 @@ export const db = {
     }
   },
 
+  // 주간 배정
   shiftsWeekly: {
     listForWeek: async (store_week_id) => {
       const { data, error } = await supabase
@@ -325,7 +346,7 @@ export const db = {
     }
   },
 
-  // ====== 기존 일 단위 (레거시) ======
+  // ====== 기존 일 단위 API (레거시 – 유지) ======
   shiftNeeds: {
     listForStore: async (storeId) => {
       const { data, error } = await supabase
