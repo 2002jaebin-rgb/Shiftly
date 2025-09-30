@@ -29,19 +29,21 @@ export const auth = {
 }
 
 // 날짜 헬퍼
-const toISODate = (d) => (typeof d === 'string' ? d : d.toISOString().slice(0,10))
+const toISODate = (d) =>
+  typeof d === 'string' ? d : d.toISOString().slice(0, 10)
+
 const mondayOf = (d) => {
   const dt = new Date(d)
   const day = dt.getDay() // 0=Sun
-  const diff = (day === 0 ? -6 : 1 - day) // Monday start
+  const diff = day === 0 ? -6 : 1 - day // Monday start
   dt.setDate(dt.getDate() + diff)
-  dt.setHours(0,0,0,0)
+  dt.setHours(0, 0, 0, 0)
   return toISODate(dt)
 }
 
 // DB
 export const db = {
-  // 기존 shifts (데모)
+  // shifts (데모용)
   shifts: {
     listForUser: async () => {
       const { data, error } = await supabase
@@ -52,7 +54,7 @@ export const db = {
     }
   },
 
-  // 프로필 (가입시 역할 저장/조회)
+  // 프로필 (회원 역할 저장)
   profiles: {
     getMine: async () => {
       const { data: userRes } = await supabase.auth.getUser()
@@ -83,10 +85,13 @@ export const db = {
     create: async (name) => {
       const { data: userRes, error: userErr } = await supabase.auth.getUser()
       if (userErr || !userRes?.user?.id) {
-        return { data: null, error: userErr || { message: '로그인 정보가 없습니다.' } }
+        return {
+          data: null,
+          error: userErr || { message: '로그인 정보가 없습니다.' }
+        }
       }
       const userId = userRes.user.id
-      // 1) store
+      // 1) store 생성
       const { data: store, error: err1 } = await supabase
         .from('stores')
         .insert([{ name }])
@@ -98,10 +103,8 @@ export const db = {
         .from('store_members')
         .insert([{ store_id: store.id, user_id: userId, role: 'manager' }])
       if (err2) return { data: null, error: err2 }
-      // 3) 기본 설정 레코드
-      await supabase
-        .from('store_settings')
-        .upsert({ store_id: store.id })  // 기본값으로 생성
+      // 3) 기본 설정 생성
+      await supabase.from('store_settings').upsert({ store_id: store.id })
       return { data: store, error: null }
     },
 
@@ -111,18 +114,19 @@ export const db = {
         .select('store_id, role')
         .eq('user_id', userId)
       if (error) return { data: null, error }
-      if (!memberships || memberships.length === 0) return { data: [], error: null }
+      if (!memberships || memberships.length === 0)
+        return { data: [], error: null }
 
-      const ids = memberships.map(m => m.store_id)
+      const ids = memberships.map((m) => m.store_id)
       const { data: stores, error: storeError } = await supabase
         .from('stores')
         .select('id, name')
         .in('id', ids)
       if (storeError) return { data: null, error: storeError }
 
-      const merged = memberships.map(m => ({
+      const merged = memberships.map((m) => ({
         role: m.role,
-        store: stores.find(s => s.id === m.store_id) || null
+        store: stores.find((s) => s.id === m.store_id) || null
       }))
       return { data: merged, error: null }
     }
@@ -133,7 +137,10 @@ export const db = {
     join: async (storeId, role = 'staff') => {
       const { data: userRes, error: userErr } = await supabase.auth.getUser()
       if (userErr || !userRes?.user?.id) {
-        return { data: null, error: userErr || { message: '로그인 정보가 없습니다.' } }
+        return {
+          data: null,
+          error: userErr || { message: '로그인 정보가 없습니다.' }
+        }
       }
       const userId = userRes.user.id
       const { data, error } = await supabase
@@ -156,8 +163,6 @@ export const db = {
   },
 
   // ====== 주 단위 ======
-
-  // 매장 설정
   storeSettings: {
     get: async (storeId) => {
       const { data, error } = await supabase
@@ -182,11 +187,9 @@ export const db = {
     }
   },
 
-  // 주 레코드
   storeWeeks: {
     getOrCreate: async (storeId, anyDateInWeek = new Date()) => {
       const week_start = mondayOf(anyDateInWeek)
-      // 먼저 조회
       let { data: w, error } = await supabase
         .from('store_weeks')
         .select('*')
@@ -194,7 +197,6 @@ export const db = {
         .eq('week_start', week_start)
         .maybeSingle()
       if (!w) {
-        // due_at 계산: store_settings 기반
         const { data: setts } = await supabase
           .from('store_settings')
           .select('due_dow, due_time')
@@ -203,11 +205,10 @@ export const db = {
         let due_at = null
         if (setts?.due_dow !== undefined && setts?.due_time) {
           const ws = new Date(week_start)
-          const dow = setts.due_dow // 0=Sun
+          const dow = setts.due_dow
           const due = new Date(ws)
-          // 주 시작(월) 기준 due 요일로 이동
           const mondayDow = 1
-          const target = dow === 0 ? 7 : dow // Sun=7
+          const target = dow === 0 ? 7 : dow
           const diff = target - mondayDow
           due.setDate(due.getDate() + diff)
           due_at = new Date(`${toISODate(due)}T${setts.due_time}:00Z`)
@@ -233,7 +234,6 @@ export const db = {
     }
   },
 
-  // 주간 수요
   weekNeeds: {
     list: async (store_week_id) => {
       const { data, error } = await supabase
@@ -246,14 +246,15 @@ export const db = {
     create: async (store_week_id, weekday, start_time, end_time, required_staff) => {
       const { data, error } = await supabase
         .from('week_shift_needs')
-        .insert([{ store_week_id, weekday, start_time, end_time, required_staff }])
+        .insert([
+          { store_week_id, weekday, start_time, end_time, required_staff }
+        ])
         .select()
         .single()
       return { data, error }
     }
   },
 
-  // 주간 availability
   availabilitiesWeekly: {
     listForWeek: async (store_week_id) => {
       const { data, error } = await supabase
@@ -268,14 +269,22 @@ export const db = {
       const uid = userRes?.user?.id
       const { data, error } = await supabase
         .from('availabilities')
-        .insert([{ store_id: storeId, store_week_id, user_id: uid, weekday, start_time, end_time }])
+        .insert([
+          {
+            store_id: storeId,
+            store_week_id,
+            user_id: uid,
+            weekday,
+            start_time,
+            end_time
+          }
+        ])
         .select()
         .single()
       return { data, error }
     }
   },
 
-  // 주간 배정
   shiftsWeekly: {
     listForWeek: async (store_week_id) => {
       const { data, error } = await supabase
@@ -285,17 +294,26 @@ export const db = {
         .order('weekday', { ascending: true })
       return { data, error }
     },
-    assign: async (storeId, store_week_id, weekday, user_id, start_time, end_time) => {
+    assign: async (
+      storeId,
+      store_week_id,
+      weekday,
+      user_id,
+      start_time,
+      end_time
+    ) => {
       const { data, error } = await supabase
         .from('shifts')
-        .insert([{ store_id: storeId, store_week_id, weekday, user_id, start_time, end_time }])
+        .insert([
+          { store_id: storeId, store_week_id, weekday, user_id, start_time, end_time }
+        ])
         .select()
         .single()
       return { data, error }
     }
   },
 
-  // ====== 기존 일 단위 API (레거시 – 유지) ======
+  // ====== 기존 일 단위 API ======
   shiftNeeds: {
     listForStore: async (storeId) => {
       const { data, error } = await supabase
@@ -308,7 +326,16 @@ export const db = {
     create: async (storeId, date, startTime, endTime, requiredStaff, dueDate) => {
       const { data, error } = await supabase
         .from('shift_needs')
-        .insert([{ store_id: storeId, date, start_time: startTime, end_time: endTime, required_staff: requiredStaff, due_date: dueDate }])
+        .insert([
+          {
+            store_id: storeId,
+            date,
+            start_time: startTime,
+            end_time: endTime,
+            required_staff: requiredStaff,
+            due_date: dueDate
+          }
+        ])
         .select()
         .single()
       return { data, error }
@@ -326,12 +353,24 @@ export const db = {
     create: async (storeId, needId, date, startTime, endTime) => {
       const { data: userRes, error: userErr } = await supabase.auth.getUser()
       if (userErr || !userRes?.user?.id) {
-        return { data: null, error: userErr || { message: '로그인 정보가 없습니다.' } }
+        return {
+          data: null,
+          error: userErr || { message: '로그인 정보가 없습니다.' }
+        }
       }
       const userId = userRes.user.id
       const { data, error } = await supabase
         .from('availabilities')
-        .insert([{ store_id: storeId, need_id: needId, user_id: userId, date, start_time: startTime, end_time: endTime }])
+        .insert([
+          {
+            store_id: storeId,
+            need_id: needId,
+            user_id: userId,
+            date,
+            start_time: startTime,
+            end_time: endTime
+          }
+        ])
         .select()
         .single()
       return { data, error }

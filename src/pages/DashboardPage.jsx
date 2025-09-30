@@ -65,7 +65,7 @@ const DashboardPage = ({ user }) => {
           <div className="bg-gray-100 rounded-lg p-6 text-center text-gray-500">
             아직 매장이 없습니다. <br />
             <button
-              onClick={() => navigate('/stores')}
+              onClick={() => navigate('/stores/new')}
               className="mt-4 bg-teal-500 text-white px-4 py-2 rounded-lg shadow hover:bg-teal-600"
             >
               매장 만들기 +

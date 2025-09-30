@@ -181,6 +181,15 @@ function App() {
             }
           />
 
+          <Route
+            path="/stores/new"
+            element={
+              <ProtectedRoute user={user}>
+                <CreateStorePage user={user} />
+              </ProtectedRoute>
+            }
+          />
+
           {/* 기본 경로 */}
           <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} />} />
           <Route path="*" element={<Navigate to="/" />} />
