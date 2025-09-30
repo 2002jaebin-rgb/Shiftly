@@ -63,16 +63,17 @@ const StoreHomePage = ({ user }) => {
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* 가로 7열로 요일 쭉 나열 */}
+      <div className="grid grid-cols-7 gap-4 overflow-x-auto">
         {weekdays.map((label, dow) => (
-          <div key={dow} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-            <h3 className="font-semibold text-gray-800 mb-2">{label}</h3>
+          <div key={dow} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 min-h-[200px]">
+            <h3 className="font-semibold text-gray-800 mb-2 text-center">{label}</h3>
 
-            <div className="space-y-2">
+            <div className="space-y-2 text-sm">
               <div>
                 <p className="text-xs text-gray-500 mb-1">필요 인원</p>
                 {(needsByDay.get(dow) || []).map(n => (
-                  <div key={n.id} className="text-sm text-gray-700">
+                  <div key={n.id} className="text-gray-700">
                     {n.start_time}~{n.end_time} · {n.required_staff}명
                   </div>
                 ))}
@@ -84,7 +85,7 @@ const StoreHomePage = ({ user }) => {
               <div>
                 <p className="text-xs text-gray-500 mb-1">제출된 가능 시간</p>
                 {(availsByDay.get(dow) || []).map(a => (
-                  <div key={a.id} className="text-xs text-gray-600">
+                  <div key={a.id} className="text-gray-600">
                     {a.user_id.slice(0,8)}… · {a.start_time}~{a.end_time}
                   </div>
                 ))}
@@ -96,7 +97,7 @@ const StoreHomePage = ({ user }) => {
               <div>
                 <p className="text-xs text-gray-500 mb-1">배정</p>
                 {(shiftsByDay.get(dow) || []).map(s => (
-                  <div key={s.id} className="text-xs text-gray-800">
+                  <div key={s.id} className="text-gray-800">
                     {s.user_id.slice(0,8)}… · {s.start_time}~{s.end_time}
                   </div>
                 ))}
