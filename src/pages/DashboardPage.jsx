@@ -94,7 +94,7 @@ const DashboardPage = ({ user }) => {
             ))}
             {/* 추가 매장 만들기 버튼 */}
             <div
-              onClick={() => navigate('/stores')}
+              onClick={() => navigate('/stores/new')}
               className="cursor-pointer bg-gray-100 flex items-center justify-center rounded-xl shadow hover:shadow-md p-6 transition"
             >
               <span className="text-3xl text-gray-400">＋</span>
