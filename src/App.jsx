@@ -19,6 +19,7 @@ import MyShiftsPage from './pages/MyShiftsPage'
 import ShiftAssignmentPage from './pages/ShiftAssignmentPage'
 import StoreHomePage from './pages/StoreHomePage'
 import OnboardingPage from './pages/OnboardingPage'
+import CreateStorePage from './pages/CreateStorePage'
 
 // ✅ 보호 라우트 컴포넌트
 const ProtectedRoute = ({ user, children }) => {
