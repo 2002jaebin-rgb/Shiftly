@@ -105,44 +105,40 @@ export const db = {
   // ---------------------------
   stores: {
     create: async (name) => {
-      const { data: sessionRes, error: sessionErr } =
-        await supabase.auth.getSession()
+      const { data: sessionRes, error: sessionErr } = await supabase.auth.getSession()
       const user = sessionRes?.session?.user
       const token = sessionRes?.session?.access_token
-
+    
       if (sessionErr || !user?.id || !token) {
         return {
           data: null,
-          error:
-            sessionErr || { message: '로그인 세션 또는 인증 토큰이 없습니다.' }
+          error: sessionErr || { message: '로그인 세션 또는 인증 토큰이 없습니다.' }
         }
       }
-
+    
       const userId = user.id
-
-      // 1) store 생성
+      const safeName = typeof name === 'string' ? name.trim() : ''
+    
       const { data: store, error: err1 } = await supabase
         .from('stores')
-        .insert([{ name: name.trim(), created_by: user.id }])
+        .insert([{ name: safeName, created_by: userId }])
         .select()
         .single()
       if (err1) return { data: null, error: err1 }
-
-      // 2) store_members 등록 (manager)
+    
       const { error: err2 } = await supabase
         .from('store_members')
         .insert([{ store_id: store.id, user_id: userId, role: 'manager' }])
       if (err2) return { data: null, error: err2 }
-
-      // 3) 기본 store_settings 생성
+    
       const { error: err3 } = await supabase
         .from('store_settings')
         .upsert({ store_id: store.id })
       if (err3) return { data: null, error: err3 }
-
+    
       return { data: store, error: null }
     },
-
+    
     listForUser: async (userId) => {
       const { data: memberships, error } = await supabase
         .from('store_members')
