@@ -123,7 +123,7 @@ export const db = {
       // 1) store 생성
       const { data: store, error: err1 } = await supabase
         .from('stores')
-        .insert([{ name: name, created_by: userId }])
+        .insert([{ name: name.trim(), created_by: user.id }])
         .select()
         .single()
       if (err1) return { data: null, error: err1 }
