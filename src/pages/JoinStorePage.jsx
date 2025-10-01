@@ -17,7 +17,7 @@ const JoinStorePage = ({ user }) => {
       return
     }
     setLoading(true)
-    const { error } = await db.storeMembers.join(idNum, user.id)
+    const { error } = await db.storeMembers.join(idNum)
     setLoading(false)
     if (error) {
       // 중복(이미 가입) 에러 코드: 23505

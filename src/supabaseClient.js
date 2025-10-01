@@ -169,41 +169,33 @@ export const db = {
   // ---------------------------
   // store_members
   // ---------------------------
-  storeMembers: {
-    join: async (storeId, role = 'staff') => {
-      const { data: userRes, error: userErr } = await supabase.auth.getUser()
-      if (userErr || !userRes?.user?.id) {
-        return {
-          data: null,
-          error: userErr || { message: '로그인 정보가 없습니다.' }
-        }
+  join: async (storeId) => {
+    const { data: userRes, error: userErr } = await supabase.auth.getUser()
+    if (userErr || !userRes?.user?.id) {
+      return {
+        data: null,
+        error: userErr || { message: '로그인 정보가 없습니다.' }
       }
-  
-      const userId = userRes.user.id
-      const parsedStoreId = parseInt(storeId, 10)
-  
-      const payload = {
-        store_id: parsedStoreId,
-        user_id: userId,
-        role: role || 'staff'   // ✅ userId 대신 제대로 role 들어감
-      }
-  
-      console.log("storeMembers.join payload (fixed):", payload)
-  
-      const { data, error } = await supabase
-        .from('store_members')
-        .insert([payload])
-        .select()
-        .single()
-  
-      if (error) {
-        console.error("❌ storeMembers.join insert error:", error)
-      } else {
-        console.log("✅ storeMembers.join insert success:", data)
-      }
-  
-      return { data, error }
     }
+  
+    const userId = userRes.user.id
+    const parsedStoreId = parseInt(storeId, 10)
+  
+    const payload = {
+      store_id: parsedStoreId,
+      user_id: userId,
+      role: 'staff'   // ✅ 항상 staff으로 가입
+    }
+  
+    console.log("storeMembers.join payload:", payload)
+  
+    const { data, error } = await supabase
+      .from('store_members')
+      .insert([payload])
+      .select()
+      .single()
+  
+    return { data, error }
   },  
   
   // ---------------------------
