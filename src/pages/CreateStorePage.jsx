@@ -35,6 +35,7 @@ const CreateStorePage = ({ user }) => {
     // 1) stores 테이블에 매장 생성
     const { data: store, error: storeError } = await db.stores.create(name.trim())
     if (storeError) {
+      console.error('❌ Store creation error:', storeError)
       setError(storeError.message)
       return
     }
@@ -53,6 +54,7 @@ const CreateStorePage = ({ user }) => {
 
     const { error: settingsError } = await db.storeSettings.create(settingsPayload)
     if (settingsError) {
+      console.error('❌ Settings error:', settingsError)
       setError(settingsError.message)
       return
     }
