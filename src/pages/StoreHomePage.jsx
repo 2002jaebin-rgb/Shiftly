@@ -4,13 +4,14 @@ import { db } from '../supabaseClient'
 
 const weekdays = ['일', '월', '화', '수', '목', '금', '토']
 
-// 08:00 ~ 23:00 시간 슬롯 생성
-const generateHourSlots = () => {
+// 시간대 생성 함수 (ex: '09:00' ~ '18:00')
+const generateHourSlots = (startStr, endStr) => {
   const slots = []
-  for (let hour = 8; hour < 23; hour++) {
-    const start = hour.toString().padStart(2, '0') + ':00'
-    const end = (hour + 1).toString().padStart(2, '0') + ':00'
-    slots.push({ label: `${start}~${end}`, hour })  // hour 기준으로 매핑
+  const start = parseInt(startStr.split(':')[0], 10)
+  const end = parseInt(endStr.split(':')[0], 10)
+  for (let hour = start; hour < end; hour++) {
+    const label = `${hour.toString().padStart(2, '0')}:00~${(hour + 1).toString().padStart(2, '0')}:00`
+    slots.push({ label, hour })
   }
   return slots
 }
@@ -19,28 +20,42 @@ const StoreHomePage = ({ user }) => {
   const { storeId } = useParams()
   const [week, setWeek] = useState(null)
   const [shifts, setShifts] = useState([])
+  const [settings, setSettings] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const load = async () => {
       setLoading(true)
+
       const { data: w } = await db.storeWeeks.getOrCreate(storeId, new Date())
       setWeek(w || null)
-      if (w?.id) {
-        const { data: s } = await db.shiftsWeekly.listForWeek(w.id)
-        setShifts(s || [])
-      }
+
+      const { data: s } = await db.shiftsWeekly.listForWeek(w?.id)
+      setShifts(s || [])
+
+      const { data: setting } = await db.storeSettings.get(storeId)
+      setSettings(setting || null)
+
       setLoading(false)
     }
     load()
   }, [storeId])
 
   if (loading) return <p>불러오는 중...</p>
-  if (!week) return <p>주 정보를 불러올 수 없습니다.</p>
+  if (!week || !settings) return <p>주 또는 매장 설정 정보를 불러올 수 없습니다.</p>
 
-  const timeSlots = generateHourSlots()
+  // 요일별 시간 슬롯 생성
+  const timeSlotsByDay = weekdays.map((_, idx) => {
+    const dayStr = weekdays[idx]
+    const openInfo = settings.open_days?.find(d => d.day === dayStr)
+    if (!openInfo || !openInfo.open) return [] // 휴무일
+    return generateHourSlots(openInfo.start, openInfo.end)
+  })
 
-  // 각 셀에 맞는 shift를 매핑
+  // 최대 슬롯 길이 (행 수 정렬용)
+  const maxSlots = Math.max(...timeSlotsByDay.map(slots => slots.length))
+
+  // 특정 요일+시간에 해당하는 shift 찾기
   const getShiftAt = (dow, hour) => {
     return shifts.find(s => {
       if (s.weekday !== dow) return false
@@ -65,7 +80,7 @@ const StoreHomePage = ({ user }) => {
         </div>
       </header>
 
-      {/* 시간대 테이블 */}
+      {/* 시간대 기반 테이블 */}
       <div className="overflow-x-auto border border-gray-200 rounded-lg">
         <table className="min-w-full text-sm text-center table-fixed border-collapse">
           <thead className="bg-gray-50">
@@ -77,13 +92,26 @@ const StoreHomePage = ({ user }) => {
             </tr>
           </thead>
           <tbody>
-            {timeSlots.map(({ label, hour }) => (
-              <tr key={label}>
-                <td className="px-2 py-1 border border-gray-200 font-medium bg-gray-50 text-left">{label}</td>
+            {[...Array(maxSlots)].map((_, rowIdx) => (
+              <tr key={rowIdx}>
+                {/* 시간 라벨 (왼쪽 맨 첫 열) */}
+                <td className="px-2 py-1 border border-gray-200 font-medium bg-gray-50 text-left">
+                  {
+                    // 가장 왼쪽 열은 월요일 기준으로 시간 표시
+                    timeSlotsByDay[1][rowIdx]?.label || ''
+                  }
+                </td>
+
+                {/* 각 요일별 칸 */}
                 {weekdays.map((_, dow) => {
-                  const shift = getShiftAt(dow, hour)
+                  const slot = timeSlotsByDay[dow][rowIdx]
+                  if (!slot) {
+                    return <td key={dow} className="border border-gray-200 bg-gray-50" />
+                  }
+
+                  const shift = getShiftAt(dow, slot.hour)
                   return (
-                    <td key={`${dow}-${hour}`} className="px-1 py-1 border border-gray-200">
+                    <td key={dow} className="px-1 py-1 border border-gray-200">
                       {shift ? (
                         <div className="bg-teal-100 text-teal-800 rounded px-1 text-xs font-medium">
                           {shift.user_id.slice(0, 8)}…
