@@ -55,19 +55,6 @@ const CreateStorePage = ({ user }) => {
       }))
     }
 
-    // 2.5) store_members 테이블에 관리자 본인 추가
-    const { error: memberError } = await db.storeMembers.add({
-      store_id: store.id,
-      user_id: user.id,
-      role: 'manager'
-    })
-    if (memberError) {
-      console.error('❌ Member add error:', memberError)
-      setError(memberError.message)
-      return
-    }
-    console.log('👤 Store member added:', user.id)
-
     const { error: settingsError } = await db.storeSettings.create(settingsPayload)
     if (settingsError) {
       console.error('❌ Settings error:', settingsError)
