@@ -33,7 +33,10 @@ const CreateStorePage = ({ user }) => {
     }
 
     // 1) stores 테이블에 매장 생성
-    const { data: store, error: storeError } = await db.stores.create(name.trim())
+    const { data: store, error: storeError } = await db.stores.create({
+      name: name.trim(),
+      created_by: user.id   // ← 반드시 추가!
+    })    
     if (storeError) {
       console.error('❌ Store creation error:', storeError)
       setError(storeError.message)
