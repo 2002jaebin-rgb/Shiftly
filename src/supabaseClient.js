@@ -178,26 +178,51 @@ export const db = {
           error: userErr || { message: '로그인 정보가 없습니다.' }
         }
       }
+  
       const userId = userRes.user.id
+      const parsedStoreId = parseInt(storeId, 10) // ✅ 안전하게 변환
+  
+      // 🔎 디버깅용 로그
+      console.log("storeMembers.join payload:", {
+        store_id: parsedStoreId,
+        user_id: userId,
+        role: role || 'staff'
+      })
+  
       const { data, error } = await supabase
         .from('store_members')
-        .insert([{ store_id: Number(storeId), user_id: userId, role }])
+        .insert([{
+          store_id: parsedStoreId,
+          user_id: userId,
+          role: role || 'staff'
+        }])
         .select()
         .single()
+  
+      // 🔎 결과 로그
+      if (error) {
+        console.error("❌ storeMembers.join insert error:", error)
+      } else {
+        console.log("✅ storeMembers.join insert success:", data)
+      }
+  
       return { data, error }
     },
+  
     myStores: async () => {
       const { data: userRes } = await supabase.auth.getUser()
       const uid = userRes?.user?.id
       if (!uid) return { data: [], error: null }
+  
       const { data, error } = await supabase
         .from('store_members')
         .select('store_id, role')
         .eq('user_id', uid)
+  
       return { data, error }
     }
   },
-
+  
   // ---------------------------
   // store_settings
   // ---------------------------
