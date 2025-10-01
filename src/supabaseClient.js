@@ -105,35 +105,36 @@ export const db = {
   // ---------------------------
   stores: {
     create: async (name) => {
-      // ✅ 세션 + 토큰 확인
-      const { data: sessionRes, error: sessionErr } = await supabase.auth.getSession()
+      const { data: sessionRes, error: sessionErr } =
+        await supabase.auth.getSession()
       const user = sessionRes?.session?.user
       const token = sessionRes?.session?.access_token
 
       if (sessionErr || !user?.id || !token) {
         return {
           data: null,
-          error: sessionErr || { message: '로그인 세션 또는 인증 토큰이 없습니다.' }
+          error:
+            sessionErr || { message: '로그인 세션 또는 인증 토큰이 없습니다.' }
         }
       }
 
       const userId = user.id
 
-      // 1) stores 테이블에 새 스토어 생성
+      // 1) store 생성
       const { data: store, error: err1 } = await supabase
         .from('stores')
-        .insert([{ name }])
+        .insert([{ name: '매장이름', created_by: user.id }])
         .select()
         .single()
       if (err1) return { data: null, error: err1 }
 
-      // 2) store_members에 매니저 등록
+      // 2) store_members 등록 (manager)
       const { error: err2 } = await supabase
         .from('store_members')
         .insert([{ store_id: store.id, user_id: userId, role: 'manager' }])
       if (err2) return { data: null, error: err2 }
 
-      // 3) 기본 설정 레코드 생성
+      // 3) 기본 store_settings 생성
       const { error: err3 } = await supabase
         .from('store_settings')
         .upsert({ store_id: store.id })
@@ -169,35 +170,50 @@ export const db = {
   // ---------------------------
   // store_members
   // ---------------------------
-  join: async (storeId) => {
-    const { data: userRes, error: userErr } = await supabase.auth.getUser()
-    if (userErr || !userRes?.user?.id) {
-      return {
-        data: null,
-        error: userErr || { message: '로그인 정보가 없습니다.' }
+  storeMembers: {
+    join: async (storeId) => {
+      const { data: userRes, error: userErr } = await supabase.auth.getUser()
+      if (userErr || !userRes?.user?.id) {
+        return {
+          data: null,
+          error: userErr || { message: '로그인 정보가 없습니다.' }
+        }
       }
+
+      const userId = userRes.user.id
+      const parsedStoreId = parseInt(storeId, 10)
+
+      const payload = {
+        store_id: parsedStoreId,
+        user_id: userId,
+        role: 'staff' // ✅ 항상 staff
+      }
+
+      console.log('storeMembers.join payload:', payload)
+
+      const { data, error } = await supabase
+        .from('store_members')
+        .insert([payload])
+        .select()
+        .single()
+
+      return { data, error }
+    },
+
+    myStores: async () => {
+      const { data: userRes } = await supabase.auth.getUser()
+      const uid = userRes?.user?.id
+      if (!uid) return { data: [], error: null }
+
+      const { data, error } = await supabase
+        .from('store_members')
+        .select('store_id, role')
+        .eq('user_id', uid)
+
+      return { data, error }
     }
-  
-    const userId = userRes.user.id
-    const parsedStoreId = parseInt(storeId, 10)
-  
-    const payload = {
-      store_id: parsedStoreId,
-      user_id: userId,
-      role: 'staff'   // ✅ 항상 staff으로 가입
-    }
-  
-    console.log("storeMembers.join payload:", payload)
-  
-    const { data, error } = await supabase
-      .from('store_members')
-      .insert([payload])
-      .select()
-      .single()
-  
-    return { data, error }
-  },  
-  
+  },
+
   // ---------------------------
   // store_settings
   // ---------------------------
