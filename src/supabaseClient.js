@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
+// =============================
 // 환경변수
+// =============================
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
@@ -8,10 +10,20 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('⚠️ Supabase env not set')
 }
 
+// =============================
 // Supabase 클라이언트
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// =============================
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  }
+})
 
+// =============================
 // 인증
+// =============================
 export const auth = {
   signIn: async (email, password) =>
     supabase.auth.signInWithPassword({ email, password }),
@@ -28,7 +40,9 @@ export const auth = {
     })
 }
 
+// =============================
 // 날짜 헬퍼
+// =============================
 const toISODate = (d) =>
   typeof d === 'string' ? d : d.toISOString().slice(0, 10)
 
@@ -41,9 +55,13 @@ const mondayOf = (d) => {
   return toISODate(dt)
 }
 
-// DB
+// =============================
+// DB API
+// =============================
 export const db = {
-  // 기존 shifts (데모)
+  // ---------------------------
+  // shifts (데모)
+  // ---------------------------
   shifts: {
     listForUser: async () => {
       const { data, error } = await supabase
@@ -54,7 +72,9 @@ export const db = {
     }
   },
 
-  // 프로필 (가입시 역할 저장/조회)
+  // ---------------------------
+  // profiles
+  // ---------------------------
   profiles: {
     getMine: async () => {
       const { data: userRes } = await supabase.auth.getUser()
@@ -80,31 +100,45 @@ export const db = {
     }
   },
 
+  // ---------------------------
   // stores
+  // ---------------------------
   stores: {
     create: async (name) => {
-      const { data: userRes, error: userErr } = await supabase.auth.getUser()
-      if (userErr || !userRes?.user?.id) {
+      // ✅ 세션 + 토큰 확인
+      const { data: sessionRes, error: sessionErr } = await supabase.auth.getSession()
+      const user = sessionRes?.session?.user
+      const token = sessionRes?.session?.access_token
+
+      if (sessionErr || !user?.id || !token) {
         return {
           data: null,
-          error: userErr || { message: '로그인 정보가 없습니다.' }
+          error: sessionErr || { message: '로그인 세션 또는 인증 토큰이 없습니다.' }
         }
       }
-      const userId = userRes.user.id
-      // 1) store
+
+      const userId = user.id
+
+      // 1) stores 테이블에 새 스토어 생성
       const { data: store, error: err1 } = await supabase
         .from('stores')
         .insert([{ name }])
         .select()
         .single()
       if (err1) return { data: null, error: err1 }
-      // 2) manager membership
+
+      // 2) store_members에 매니저 등록
       const { error: err2 } = await supabase
         .from('store_members')
         .insert([{ store_id: store.id, user_id: userId, role: 'manager' }])
       if (err2) return { data: null, error: err2 }
-      // 3) 기본 설정 레코드
-      await supabase.from('store_settings').upsert({ store_id: store.id }) // 기본값으로 생성
+
+      // 3) 기본 설정 레코드 생성
+      const { error: err3 } = await supabase
+        .from('store_settings')
+        .upsert({ store_id: store.id })
+      if (err3) return { data: null, error: err3 }
+
       return { data: store, error: null }
     },
 
@@ -132,7 +166,9 @@ export const db = {
     }
   },
 
+  // ---------------------------
   // store_members
+  // ---------------------------
   storeMembers: {
     join: async (storeId, role = 'staff') => {
       const { data: userRes, error: userErr } = await supabase.auth.getUser()
@@ -162,9 +198,9 @@ export const db = {
     }
   },
 
-  // ====== 주 단위 ======
-
-  // 매장 설정
+  // ---------------------------
+  // store_settings
+  // ---------------------------
   storeSettings: {
     get: async (storeId) => {
       const { data, error } = await supabase
@@ -187,7 +223,6 @@ export const db = {
         .single()
       return { data, error }
     },
-    // ✅ 추가: create 함수 (프론트엔드 호환용)
     create: async (storeId, { open_days, open_hours, due_dow, due_time }) => {
       const payload = { store_id: Number(storeId) }
       if (open_days !== undefined) payload.open_days = open_days
@@ -203,7 +238,9 @@ export const db = {
     }
   },
 
-  // 주 레코드
+  // ---------------------------
+  // store_weeks
+  // ---------------------------
   storeWeeks: {
     getOrCreate: async (storeId, anyDateInWeek = new Date()) => {
       const week_start = mondayOf(anyDateInWeek)
@@ -251,7 +288,9 @@ export const db = {
     }
   },
 
-  // 주간 수요
+  // ---------------------------
+  // week_shift_needs
+  // ---------------------------
   weekNeeds: {
     list: async (store_week_id) => {
       const { data, error } = await supabase
@@ -261,25 +300,19 @@ export const db = {
         .order('weekday', { ascending: true })
       return { data, error }
     },
-    create: async (
-      store_week_id,
-      weekday,
-      start_time,
-      end_time,
-      required_staff
-    ) => {
+    create: async (store_week_id, weekday, start_time, end_time, required_staff) => {
       const { data, error } = await supabase
         .from('week_shift_needs')
-        .insert([
-          { store_week_id, weekday, start_time, end_time, required_staff }
-        ])
+        .insert([{ store_week_id, weekday, start_time, end_time, required_staff }])
         .select()
         .single()
       return { data, error }
     }
   },
 
-  // 주간 availability
+  // ---------------------------
+  // availabilities (weekly)
+  // ---------------------------
   availabilitiesWeekly: {
     listForWeek: async (store_week_id) => {
       const { data, error } = await supabase
@@ -294,23 +327,16 @@ export const db = {
       const uid = userRes?.user?.id
       const { data, error } = await supabase
         .from('availabilities')
-        .insert([
-          {
-            store_id: storeId,
-            store_week_id,
-            user_id: uid,
-            weekday,
-            start_time,
-            end_time
-          }
-        ])
+        .insert([{ store_id: storeId, store_week_id, user_id: uid, weekday, start_time, end_time }])
         .select()
         .single()
       return { data, error }
     }
   },
 
-  // 주간 배정
+  // ---------------------------
+  // shifts (weekly)
+  // ---------------------------
   shiftsWeekly: {
     listForWeek: async (store_week_id) => {
       const { data, error } = await supabase
@@ -320,33 +346,19 @@ export const db = {
         .order('weekday', { ascending: true })
       return { data, error }
     },
-    assign: async (
-      storeId,
-      store_week_id,
-      weekday,
-      user_id,
-      start_time,
-      end_time
-    ) => {
+    assign: async (storeId, store_week_id, weekday, user_id, start_time, end_time) => {
       const { data, error } = await supabase
         .from('shifts')
-        .insert([
-          {
-            store_id: storeId,
-            store_week_id,
-            weekday,
-            user_id,
-            start_time,
-            end_time
-          }
-        ])
+        .insert([{ store_id: storeId, store_week_id, weekday, user_id, start_time, end_time }])
         .select()
         .single()
       return { data, error }
     }
   },
 
-  // ====== 기존 일 단위 API (레거시 – 유지) ======
+  // ---------------------------
+  // shift_needs (legacy)
+  // ---------------------------
   shiftNeeds: {
     listForStore: async (storeId) => {
       const { data, error } = await supabase
@@ -359,22 +371,16 @@ export const db = {
     create: async (storeId, date, startTime, endTime, requiredStaff, dueDate) => {
       const { data, error } = await supabase
         .from('shift_needs')
-        .insert([
-          {
-            store_id: storeId,
-            date,
-            start_time: startTime,
-            end_time: endTime,
-            required_staff: requiredStaff,
-            due_date: dueDate
-          }
-        ])
+        .insert([{ store_id: storeId, date, start_time: startTime, end_time: endTime, required_staff: requiredStaff, due_date: dueDate }])
         .select()
         .single()
       return { data, error }
     }
   },
 
+  // ---------------------------
+  // availabilities (legacy, by need)
+  // ---------------------------
   availabilities: {
     listForNeed: async (needId) => {
       const { data, error } = await supabase
@@ -386,24 +392,12 @@ export const db = {
     create: async (storeId, needId, date, startTime, endTime) => {
       const { data: userRes, error: userErr } = await supabase.auth.getUser()
       if (userErr || !userRes?.user?.id) {
-        return {
-          data: null,
-          error: userErr || { message: '로그인 정보가 없습니다.' }
-        }
+        return { data: null, error: userErr || { message: '로그인 정보가 없습니다.' } }
       }
       const userId = userRes.user.id
       const { data, error } = await supabase
         .from('availabilities')
-        .insert([
-          {
-            store_id: storeId,
-            need_id: needId,
-            user_id: userId,
-            date,
-            start_time: startTime,
-            end_time: endTime
-          }
-        ])
+        .insert([{ store_id: storeId, need_id: needId, user_id: userId, date, start_time: startTime, end_time: endTime }])
         .select()
         .single()
       return { data, error }
