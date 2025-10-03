@@ -41,30 +41,17 @@ const CreateStorePage = ({ user }) => {
     }
 
     // 2) store_settings 테이블에 추가 정보 저장
-    const settingsPayload = {
-      store_id: store.id,
-      deadline_day: deadline,
-      open_days: openDays.map((d) => ({
+    const { error: settingsError } = await db.storeSettings.create(store.id, {
+      open_days: openDays.map((d) => d.open), // bool[] 그대로 전달
+      open_hours: openDays.map((d) => ({      // jsonb는 stringify 필요 없음
         day: d.day,
-        open: d.open,
         start: d.start,
         end: d.end
-      }))
-    }
+      })),
+      due_dow: days.indexOf(deadline),        // 숫자 (월=0~일=6)
+      due_time: '18:00'                       // 문자열 TEXT
+    })
 
-    const { error: settingsError } = await db.storeSettings.create(store.id, {
-      open_days: openDays.map((d) => d.open), // bool[]
-      open_hours: JSON.stringify(
-        openDays.map((d) => ({
-          day: d.day,
-          start: d.start,
-          end: d.end
-        }))
-      ), // jsonb
-      due_dow: days.indexOf(deadline), // 요일 숫자
-      due_time: '18:00'
-    })    
-    
     if (settingsError) {
       console.error('❌ Settings error:', settingsError)
       setError(settingsError.message)
