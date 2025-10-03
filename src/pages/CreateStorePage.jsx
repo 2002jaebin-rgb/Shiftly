@@ -53,15 +53,17 @@ const CreateStorePage = ({ user }) => {
     }
 
     const { error: settingsError } = await db.storeSettings.create(store.id, {
-      open_days: openDays.map((d) => ({
-        day: d.day,
-        open: d.open,
-        start: d.start,
-        end: d.end
-      })),
-      due_dow: days.indexOf(deadline), // 요일을 숫자로 저장 (월=0~일=6)
-      due_time: '18:00' // 필요하다면 기본값 세팅
-    })
+      open_days: openDays.map((d) => d.open), // bool[]
+      open_hours: JSON.stringify(
+        openDays.map((d) => ({
+          day: d.day,
+          start: d.start,
+          end: d.end
+        }))
+      ), // jsonb
+      due_dow: days.indexOf(deadline), // 요일 숫자
+      due_time: '18:00'
+    })    
     
     if (settingsError) {
       console.error('❌ Settings error:', settingsError)
