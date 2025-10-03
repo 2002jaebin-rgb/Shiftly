@@ -131,11 +131,6 @@ export const db = {
         .insert([{ store_id: store.id, user_id: userId, role: 'manager' }])
       if (err2) return { data: null, error: err2 }
     
-      const { error: err3 } = await supabase
-        .from('store_settings')
-        .upsert({ store_id: store.id })
-      if (err3) return { data: null, error: err3 }
-    
       return { data: store, error: null }
     },
     
