@@ -39,6 +39,15 @@ const StoreHomePage = ({ user }) => {
         </div>
       </header>
 
+      <section className="mt-6">
+        <p className="text-gray-700">
+          매장 ID: <b>{storeId}</b>
+        </p>
+        <p className="text-gray-500 text-sm mt-2">
+          여기에 매장별 안내나 위젯들을 추가할 수 있습니다.
+        </p>
+      </section>
+
       {/* 멤버 관리 모달 */}
       {showMemberModal && (
         <MemberManagementModal
