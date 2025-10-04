@@ -4,14 +4,31 @@ import { db } from '../supabaseClient'
 
 const weekdays = ['일', '월', '화', '수', '목', '금', '토']
 
-// 시간대 생성 함수 (ex: '09:00' ~ '18:00')
-const generateHourSlots = (startStr, endStr) => {
+// store_settings.open_hours 기반(없으면 08~23 기본)으로 1시간 슬롯 생성
+const generateHourSlots = (settings) => {
+  const pad = (n) => n.toString().padStart(2, '0')
+  let startH = 8,
+    endH = 23 // 기본 범위
+
+  const oh = settings?.open_hours
+  if (Array.isArray(oh) && oh.length > 0) {
+    const toMin = (t) => {
+      if (!t || typeof t !== 'string' || !t.includes(':')) return null
+      const [h, m] = t.split(':').map(Number)
+      return h * 60 + (m || 0)
+    }
+    const starts = oh.map((d) => toMin(d.start)).filter((v) => typeof v === 'number')
+    const ends = oh.map((d) => toMin(d.end)).filter((v) => typeof v === 'number')
+    if (starts.length && ends.length) {
+      startH = Math.floor(Math.min(...starts) / 60)
+      endH = Math.ceil(Math.max(...ends) / 60)
+      if (startH === endH) endH = startH + 1
+    }
+  }
+
   const slots = []
-  const start = parseInt(startStr.split(':')[0], 10)
-  const end = parseInt(endStr.split(':')[0], 10)
-  for (let hour = start; hour < end; hour++) {
-    const label = `${hour.toString().padStart(2, '0')}:00~${(hour + 1).toString().padStart(2, '0')}:00`
-    slots.push({ label, hour })
+  for (let h = startH; h < endH; h++) {
+    slots.push({ label: `${pad(h)}:00~${pad(h + 1)}:00`, hour: h })
   }
   return slots
 }
@@ -44,20 +61,13 @@ const StoreHomePage = ({ user }) => {
   if (loading) return <p>불러오는 중...</p>
   if (!week || !settings) return <p>주 또는 매장 설정 정보를 불러올 수 없습니다.</p>
 
-  // 요일별 시간 슬롯 생성
-  const timeSlotsByDay = weekdays.map((_, idx) => {
-    const dayStr = weekdays[idx]
-    const openInfo = settings.open_days?.find(d => d.day === dayStr)
-    if (!openInfo || !openInfo.open) return [] // 휴무일
-    return generateHourSlots(openInfo.start, openInfo.end)
-  })
-
-  // 최대 슬롯 길이 (행 수 정렬용)
-  const maxSlots = Math.max(...timeSlotsByDay.map(slots => slots.length))
+  // 전체 운영시간 기준으로 공통 슬롯 생성
+  const baseSlots = generateHourSlots(settings)
+  const timeSlotsByDay = weekdays.map(() => baseSlots)
 
   // 특정 요일+시간에 해당하는 shift 찾기
   const getShiftAt = (dow, hour) => {
-    return shifts.find(s => {
+    return shifts.find((s) => {
       if (s.weekday !== dow) return false
       const startH = parseInt(s.start_time.split(':')[0], 10)
       const endH = parseInt(s.end_time.split(':')[0], 10)
@@ -72,11 +82,17 @@ const StoreHomePage = ({ user }) => {
           <h2 className="text-2xl font-bold text-gray-800">이번 주 근무표</h2>
           <p className="text-gray-500 text-sm">
             주 시작: {week.week_start} · 마감:{' '}
-            {week.due_at ? new Date(week.due_at).toLocaleString() : '설정없음'} · 상태: {week.status}
+            {week.due_at ? new Date(week.due_at).toLocaleString() : '설정없음'} · 상태:{' '}
+            {week.status}
           </p>
         </div>
         <div className="flex gap-2">
-          <Link className="px-3 py-2 rounded-lg bg-[#3AC0C3] text-white" to={`/stores/${storeId}/assign`}>배정 관리</Link>
+          <Link
+            className="px-3 py-2 rounded-lg bg-[#3AC0C3] text-white"
+            to={`/stores/${storeId}/assign`}
+          >
+            배정 관리
+          </Link>
         </div>
       </header>
 
@@ -87,37 +103,51 @@ const StoreHomePage = ({ user }) => {
             <tr>
               <th className="w-24 px-2 py-2 border border-gray-200">시간</th>
               {weekdays.map((day, idx) => (
-                <th key={idx} className="px-2 py-2 border border-gray-200">{day}</th>
+                <th key={idx} className="px-2 py-2 border border-gray-200">
+                  {day}
+                </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {[...Array(maxSlots)].map((_, rowIdx) => (
+            {baseSlots.map((slot, rowIdx) => (
               <tr key={rowIdx}>
-                {/* 시간 라벨 (왼쪽 맨 첫 열) */}
+                {/* 시간 라벨 */}
                 <td className="px-2 py-1 border border-gray-200 font-medium bg-gray-50 text-left">
-                  {
-                    // 가장 왼쪽 열은 월요일 기준으로 시간 표시
-                    timeSlotsByDay[1][rowIdx]?.label || ''
-                  }
+                  {slot.label}
                 </td>
 
-                {/* 각 요일별 칸 */}
+                {/* 요일별 칸 */}
                 {weekdays.map((_, dow) => {
-                  const slot = timeSlotsByDay[dow][rowIdx]
-                  if (!slot) {
-                    return <td key={dow} className="border border-gray-200 bg-gray-50" />
+                  const openDay = settings.open_days?.[dow] ?? true
+                  const openInfo = settings.open_hours?.[dow]
+                  let isOpen = openDay
+
+                  if (isOpen && openInfo) {
+                    const startH = parseInt(openInfo.start.split(':')[0], 10)
+                    const endH = parseInt(openInfo.end.split(':')[0], 10)
+                    isOpen = slot.hour >= startH && slot.hour < endH
                   }
 
-                  const shift = getShiftAt(dow, slot.hour)
+                  const shift = isOpen ? getShiftAt(dow, slot.hour) : null
+
                   return (
-                    <td key={dow} className="px-1 py-1 border border-gray-200">
-                      {shift ? (
-                        <div className="bg-teal-100 text-teal-800 rounded px-1 text-xs font-medium">
-                          {shift.user_id.slice(0, 8)}…
-                        </div>
+                    <td
+                      key={dow}
+                      className={`px-1 py-1 border border-gray-200 ${
+                        !isOpen ? 'bg-gray-200' : ''
+                      }`}
+                    >
+                      {isOpen ? (
+                        shift ? (
+                          <div className="bg-teal-100 text-teal-800 rounded px-1 text-xs font-medium">
+                            {shift.user_id.slice(0, 8)}…
+                          </div>
+                        ) : (
+                          <span className="text-gray-300 text-xs">-</span>
+                        )
                       ) : (
-                        <span className="text-gray-300 text-xs">-</span>
+                        <span className="text-gray-400 text-xs">휴무</span>
                       )}
                     </td>
                   )
