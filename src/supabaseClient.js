@@ -17,8 +17,15 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: true
   },
+
+  global: {    
+    headers: {
+    // ✅ 로그인된 사용자의 토큰이 항상 헤더로 전송되도록 설정
+    Authorization: `Bearer ${localStorage.getItem('supabase.auth.token')}`
+    }
+  }
 })
 
 // =============================
