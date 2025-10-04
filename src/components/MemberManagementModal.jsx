@@ -7,12 +7,14 @@ const MemberManagementModal = ({ storeId, onClose }) => {
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await db.storeMembers.listForStore(storeId)
+      const { data, error } = await db.storeMembers.listForStore(storeId)
+      console.log("📌 listForStore result:", data, error) // ✅ 여기 로그 추가
       setMembers(data || [])
       setLoading(false)
     }
     load()
   }, [storeId])
+  
 
   const handleRoleChange = async (userId, role) => {
     const { error } = await db.storeMembers.updateRole(storeId, userId, role)
