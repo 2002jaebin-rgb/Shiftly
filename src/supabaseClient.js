@@ -212,14 +212,23 @@ export const db = {
     },
 
     // ✅ 멤버 목록 조회
+    // 기존 listForStore 교체
     listForStore: async (storeId) => {
       const { data, error } = await supabase
         .from('store_members')
-        .select('user_id, role')
+        .select(`
+          user_id,
+          role,
+          profiles (
+            id,
+            display_name,
+            account_role
+          )
+        `) // 🔥 profiles join
         .eq('store_id', storeId)
-      
-        console.log("listForStore result:", data, error)
-        return { data, error }
+
+      console.log("listForStore result:", data, error)
+      return { data, error }
     },
 
     // ✅ 역할 변경
