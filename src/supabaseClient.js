@@ -224,12 +224,11 @@ export const db = {
             display_name,
             account_role
           )
-        `) // 🔥 profiles join
+        `)
         .eq('store_id', storeId)
-
-      console.log("listForStore result:", data, error)
+    
       return { data, error }
-    },
+    },    
 
     // ✅ 역할 변경
     updateRole: async (storeId, userId, role) => {
