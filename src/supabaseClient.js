@@ -215,9 +215,11 @@ export const db = {
     listForStore: async (storeId) => {
       const { data, error } = await supabase
         .from('store_members')
-        .select('user_id, role, profiles(display_name)')
+        .select('user_id, role')
         .eq('store_id', storeId)
-      return { data, error }
+      
+        console.log("listForStore result:", data, error)
+        return { data, error }
     },
 
     // ✅ 역할 변경
