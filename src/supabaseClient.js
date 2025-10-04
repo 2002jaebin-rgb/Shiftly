@@ -234,11 +234,13 @@ export const db = {
     updateRole: async (storeId, userId, role) => {
       const { data, error } = await supabase
         .from('store_members')
-        .update({ role })
+        .update({ role: newRole})
         .eq('store_id', storeId)
         .eq('user_id', userId)
         .select()
         .single()
+
+      console.log("📌 updateRole result:", data, error)
       return { data, error }
     },
 
@@ -249,6 +251,8 @@ export const db = {
         .delete()
         .eq('store_id', storeId)
         .eq('user_id', userId)
+
+      console.log("📌 remove result:", error)
       return { error }
     },
   },
