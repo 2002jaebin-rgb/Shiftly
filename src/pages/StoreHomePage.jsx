@@ -119,13 +119,13 @@ const StoreHomePage = ({ user }) => {
 
                 {/* 요일별 칸 */}
                 {weekdays.map((_, dow) => {
-                  const openDay = settings.open_days?.[dow] ?? true
-                  const openInfo = settings.open_hours?.[dow]
-                  let isOpen = openDay
+                  const openDay = settings.open_days?.[dow] ?? false
+                  const openInfo = settings.open_hours?.find(d => d.day === weekdays[dow])
 
+                  let isOpen = openDay
                   if (isOpen && openInfo) {
                     const startH = parseInt(openInfo.start.split(':')[0], 10)
-                    const endH = parseInt(openInfo.end.split(':')[0], 10)
+                    const endH   = parseInt(openInfo.end.split(':')[0], 10)
                     isOpen = slot.hour >= startH && slot.hour < endH
                   }
 
