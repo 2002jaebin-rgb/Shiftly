@@ -1,36 +1,43 @@
 import React, { useEffect, useState } from 'react'
 import { db } from '../supabaseClient'
 
-const MemberManagementModal = ({ storeId, onClose }) => {
+const MemberManagementModal = ({ storeId, onClose, myRole }) => {
   const [members, setMembers] = useState([])
   const [loading, setLoading] = useState(true)
+  const [processing, setProcessing] = useState(false)
 
-  useEffect(() => {
-    const load = async () => {
-      const { data, error } = await db.storeMembers.listForStore(storeId)
-      console.log("📌 listForStore result:", data, error) // ✅ 여기 로그 추가
-      setMembers(data || [])
-      setLoading(false)
-    }
-    load()
-  }, [storeId])
-  
-
-  const handleRoleChange = async (userId, role) => {
-    const { error } = await db.storeMembers.updateRole(storeId, userId, role)
-    if (!error) {
-      setMembers((prev) =>
-        prev.map((m) => (m.user_id === userId ? { ...m, role } : m))
-      )
-    }
+  // ✅ 멤버 목록 로드
+  const loadMembers = async () => {
+    setLoading(true)
+    const { data, error } = await db.storeMembers.listForStore(storeId)
+    console.log("📌 listForStore result:", data, error)
+    setMembers(data || [])
+    setLoading(false)
   }
 
+  useEffect(() => {
+    loadMembers()
+  }, [storeId])
+
+  // ✅ 역할 변경
+  const handleRoleChange = async (userId, role) => {
+    if (myRole !== 'manager') return alert('권한이 없습니다.')
+    setProcessing(true)
+    const { error } = await db.storeMembers.updateRole(storeId, userId, role)
+    if (error) alert('역할 변경 실패: ' + error.message)
+    else await loadMembers()
+    setProcessing(false)
+  }
+
+  // ✅ 멤버 삭제
   const handleRemove = async (userId) => {
+    if (myRole !== 'manager') return alert('권한이 없습니다.')
     if (!window.confirm('정말 삭제하시겠습니까?')) return
+    setProcessing(true)
     const { error } = await db.storeMembers.remove(storeId, userId)
-    if (!error) {
-      setMembers((prev) => prev.filter((m) => m.user_id !== userId))
-    }
+    if (error) alert('삭제 실패: ' + error.message)
+    else await loadMembers()
+    setProcessing(false)
   }
 
   return (
@@ -52,40 +59,45 @@ const MemberManagementModal = ({ storeId, onClose }) => {
               <tr className="bg-gray-100">
                 <th className="p-2 border">이름</th>
                 <th className="p-2 border">역할</th>
-                <th className="p-2 border">액션</th>
+                {myRole === 'manager' && <th className="p-2 border">액션</th>}
               </tr>
             </thead>
             <tbody>
               {members.map((m) => (
                 <tr key={m.user_id}>
                   <td className="p-2 border">
-                    {m.profiles?.display_name || m.user_id}
+                    {m.profiles?.display_name || m.user_id.slice(0, 8) + '…'}
                   </td>
                   <td className="p-2 border">{m.role}</td>
-                  <td className="p-2 border space-x-2">
-                    {m.role !== 'manager' && (
+                  {myRole === 'manager' && (
+                    <td className="p-2 border space-x-2">
+                      {m.role !== 'manager' && (
+                        <button
+                          onClick={() => handleRoleChange(m.user_id, 'manager')}
+                          disabled={processing}
+                          className="text-blue-600"
+                        >
+                          매니저로
+                        </button>
+                      )}
+                      {m.role !== 'staff' && (
+                        <button
+                          onClick={() => handleRoleChange(m.user_id, 'staff')}
+                          disabled={processing}
+                          className="text-green-600"
+                        >
+                          스태프로
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleRoleChange(m.user_id, 'manager')}
-                        className="text-blue-600"
+                        onClick={() => handleRemove(m.user_id)}
+                        disabled={processing}
+                        className="text-red-600"
                       >
-                        매니저로
+                        삭제
                       </button>
-                    )}
-                    {m.role !== 'staff' && (
-                      <button
-                        onClick={() => handleRoleChange(m.user_id, 'staff')}
-                        className="text-green-600"
-                      >
-                        스태프로
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleRemove(m.user_id)}
-                      className="text-red-600"
-                    >
-                      삭제
-                    </button>
-                  </td>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

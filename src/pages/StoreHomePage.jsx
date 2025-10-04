@@ -189,7 +189,12 @@ const StoreHomePage = ({ user }) => {
       {showMemberModal && (
         <MemberManagementModal
           storeId={storeId}
-          onClose={() => setShowMemberModal(false)}
+          myRole={myRole}  // ✅ 내 역할 전달
+          onClose={() => {
+            setShowMemberModal(false)
+            // 모달 닫을 때 역할 갱신 (optional)
+            fetchRole()
+          }}
         />
       )}
     </div>
