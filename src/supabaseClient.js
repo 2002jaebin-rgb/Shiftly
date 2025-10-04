@@ -231,7 +231,7 @@ export const db = {
     },    
 
     // ✅ 역할 변경
-    updateRole: async (storeId, userId, role) => {
+    updateRole: async (storeId, userId, newRole) => {
       const { data, error } = await supabase
         .from('store_members')
         .update({ role: newRole})
